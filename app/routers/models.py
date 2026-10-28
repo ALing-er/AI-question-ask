@@ -3,7 +3,7 @@ from dataclasses import asdict
 
 from fastapi import APIRouter
 
-from app.deps import CurrentUser
+from app.core.deps import CurrentUser
 from app.providers import registry
 
 router = APIRouter(prefix="/api/models", tags=["models"])

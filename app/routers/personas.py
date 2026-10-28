@@ -10,12 +10,12 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.deps import CurrentUser
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 from app.db import get_session
-from app.deps import CurrentUser
-from app.errors import AppError
-from app.logging_config import get_logger
-from app.models import Persona
+from app.db.models import Persona
 from app.providers import registry
 from app.schemas import (
     BeautifyPromptRequest,

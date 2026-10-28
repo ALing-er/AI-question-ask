@@ -19,6 +19,7 @@ export default function ModelSelect({ models, value, onChange, disabled }: Props
       {models.map((m) => (
         <option key={m.id} value={m.id} disabled={!m.available}>
           {m.name}
+          {m.supports_search ? ' · 联网' : ''}
           {m.available ? '' : '（未配置密钥）'}
         </option>
       ))}

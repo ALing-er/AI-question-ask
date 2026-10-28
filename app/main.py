@@ -10,11 +10,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.bootstrap import ensure_seed_admin
-from app.config import BASE_DIR, get_settings
+from app.core.config import BASE_DIR, get_settings
 from app.db import AsyncSessionLocal, cleanup_revoked_tokens, dispose_db, init_db
-from app.errors import AppError, build_error_body, register_exception_handlers
-from app.logging_config import get_logger, request_id_ctx, setup_logging, user_id_ctx
+from app.core.errors import AppError, build_error_body, register_exception_handlers
+from app.core.logging_setup import get_logger, request_id_ctx, setup_logging, user_id_ctx
 from app.routers import admin as admin_router
 from app.routers import auth as auth_router
 from app.routers import chat as chat_router
@@ -23,6 +22,7 @@ from app.routers import models as models_router
 from app.routers import personas as personas_router
 from app.routers import system as system_router
 from app.routers import voice as voice_router
+from app.services.bootstrap import ensure_seed_admin
 
 APP_VERSION = "0.1.0"
 

@@ -349,10 +349,11 @@ export async function streamChat(params: {
   conversationId: number
   content: string
   modelId?: string
+  webSearch?: boolean
   signal: AbortSignal
   handlers: StreamHandlers
 }): Promise<void> {
-  const { conversationId, content, modelId, signal, handlers } = params
+  const { conversationId, content, modelId, webSearch = true, signal, handlers } = params
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
@@ -361,7 +362,12 @@ export async function streamChat(params: {
     method: 'POST',
     headers,
     signal,
-    body: JSON.stringify({ conversation_id: conversationId, content, model_id: modelId }),
+    body: JSON.stringify({
+      conversation_id: conversationId,
+      content,
+      model_id: modelId,
+      web_search: webSearch,
+    }),
   })
 
   if (!res.ok) {

@@ -40,6 +40,7 @@ export default function ChatPage() {
   const [savingPersona, setSavingPersona] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [autoRead, setAutoRead] = useState(false)
+  const [webSearch, setWebSearch] = useState(true)
 
   const abortRef = useRef<AbortController | null>(null)
   const activeIdRef = useRef<number | null>(null)
@@ -78,7 +79,13 @@ export default function ChatPage() {
           setModelId(cs[0].model_id)
           setMessages(await api.listMessages(cs[0].id))
         } else {
-          setModelId(m.models.find((x) => x.available)?.id ?? m.models[0]?.id ?? '')
+          // 优先用后端配置的默认模型（百炼带联网搜索），别退化到无搜索能力的模型
+          const pick =
+            m.models.find((x) => x.available && x.is_default) ??
+            m.models.find((x) => x.available && x.supports_search) ??
+            m.models.find((x) => x.available) ??
+            m.models[0]
+          setModelId(pick?.id ?? '')
         }
       } catch (e) {
         setError(errText(e))
@@ -403,6 +410,7 @@ export default function ChatPage() {
         conversationId: convId,
         content: text,
         modelId: modelId || undefined,
+        webSearch,
         signal: controller.signal,
         handlers: {
           onDelta: (t) => {
@@ -524,6 +532,23 @@ export default function ChatPage() {
               }`}
             >
               自动朗读{autoRead ? '：开' : '：关'}
+            </button>
+            <button
+              onClick={() => setWebSearch((v) => !v)}
+              aria-pressed={webSearch}
+              disabled={streaming}
+              title={
+                currentModel?.supports_search
+                  ? '模型会自动判断是否需要联网查询实时信息'
+                  : '当前模型不支持联网搜索'
+              }
+              className={`rounded-lg border px-2.5 py-1.5 text-xs transition disabled:opacity-40 ${
+                webSearch && currentModel?.supports_search
+                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              联网{webSearch ? '：开' : '：关'}
             </button>
             <ModelSelect
               models={models}

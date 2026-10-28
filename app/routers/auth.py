@@ -7,13 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.audit import write_audit
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.deps import CurrentUser, TokenContext
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
+from app.core.security import create_access_token, hash_password, verify_password
 from app.db import get_session
-from app.deps import CurrentUser, TokenContext
-from app.errors import AppError
-from app.logging_config import get_logger
-from app.models import RevokedToken, User
+from app.db.models import RevokedToken, User
 from app.schemas import (
     ChangePasswordRequest,
     LoginRequest,
@@ -21,7 +21,7 @@ from app.schemas import (
     TokenResponse,
     UserOut,
 )
-from app.security import create_access_token, hash_password, verify_password
+from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = get_logger("app.auth")

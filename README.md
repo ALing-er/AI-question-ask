@@ -1,6 +1,6 @@
 # AI 问答平台
 
-多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台、角色设定、自定义音色、百炼语音输入与朗读。
+多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台、角色设定、自定义音色、百炼语音输入与朗读、默认联网搜索。
 
 ## 技术栈
 
@@ -14,34 +14,39 @@
 
 ```
 ai-qa/
-├── backend 部分就在根目录
-│   ├── app/
-│   │   ├── main.py          应用入口
+├── app/
+│   ├── main.py              应用入口：lifespan / 中间件 / 路由挂载 / SPA 托管
+│   ├── schemas.py           请求与响应模型
+│   ├── core/                基础设施
 │   │   ├── config.py        配置（读 .env）
-│   │   ├── db.py            引擎 / 会话 / UTCDateTime
-│   │   ├── models.py        User / Conversation / Message
-│   │   ├── schemas.py       请求响应模型
 │   │   ├── security.py      bcrypt + JWT
 │   │   ├── deps.py          鉴权 / 管理员 / 会话归属
-│   │   ├── errors.py        统一错误码
-│   │   ├── logging_config.py 结构化日志
-│   │   ├── bootstrap.py     种子管理员
+│   │   ├── errors.py        统一错误码与异常处理
+│   │   └── logging_setup.py 结构化日志 + request_id 上下文
+│   ├── db/                  数据库层
+│   │   ├── __init__.py      会话接口转发
+│   │   ├── session.py       引擎 / 会话 / UTCDateTime / 启动补列
+│   │   └── models.py        User / Conversation / Message / Persona / CustomVoice / AuditLog
+│   ├── providers/           模型适配层（base / openai_compat / registry）
+│   ├── services/            业务服务
+│   │   ├── voice.py         百炼 TTS / ASR / 声音设计
 │   │   ├── audit.py         审计日志写入
-│   │   ├── providers/       模型适配层
-│   │   ├── services/        voice.py（百炼 TTS / ASR）
-│   │   └── routers/         auth / conversations / models / chat / admin / personas / system / voice
-│   ├── config/models.yaml   模型清单（加模型只改这里）
-│   ├── data/app.db          SQLite
-│   ├── logs/app.log
-│   └── start.bat / start.ps1 一键启动
+│   │   └── bootstrap.py     种子管理员
+│   └── routers/             auth / conversations / models / chat / admin / personas / system / voice
+├── config/models.yaml       模型清单（加模型只改这里）
+├── data/app.db              SQLite（运行时生成）
+├── logs/app.log             运行日志（运行时生成）
+├── start.bat / start.ps1    一键启动
 └── frontend/
-    ├── dist/               生产构建产物（由 FastAPI 托管）
+    ├── dist/                生产构建产物（由 FastAPI 托管）
     └── src/
         ├── api.ts           REST + SSE 客户端
+        ├── types.ts         共享类型
+        ├── App.tsx main.tsx 路由与入口
         ├── store/auth.ts    登录态
         ├── pages/           Login / Register / Chat / Admin
-        ├── components/      会话列表 / 消息气泡 / 输入框 / 模型选择 / 角色弹窗
-        └── utils/           浏览器语音朗读
+        ├── components/      会话列表 / 消息气泡 / Markdown / 输入框 / 模型选择 / 角色弹窗
+        └── utils/speech.ts  浏览器录音与 TTS 播放
 ```
 
 ## 启动
@@ -106,17 +111,29 @@ providers:
       - id: qwen3.8-max
         name: 通义千问 3.8 Max
         fallback: deepseek-chat      # 这个模型失败时切到谁
+        search: true                 # 支持百炼内置联网搜索
 ```
 
 新增模型只改这个文件，不用动代码。
 
-**当前可用**：
+**前端可选模型**：
 
-| 供应商 | 模型 | 状态 |
+| 供应商 | 模型 | 联网 |
 |---|---|---|
-| DeepSeek | `deepseek-chat`、`deepseek-reasoner` | ✅ |
-| 阿里云百炼 | `qwen3.8-max`、`qwen3.8-flash`、`deepseek-v4-pro-0813`、`kimi-k3` | ✅ |
-| 火山方舟 | 豆包系列 | ⚠️ key 有效但模型未开通 |
+| 阿里云百炼 | `qwen3.8-flash`（默认） | ✅ |
+| DeepSeek | `deepseek-chat` | — |
+
+其余模型（`qwen3.8-max`、`deepseek-v4-pro-0813`、`kimi-k3`、`deepseek-reasoner`）在 `models.yaml` 标了 `hidden: true`：不出现在下拉框，但仍可被已有会话和 fallback 链路使用。
+
+### 联网搜索
+
+默认模型 `qwen3.8-flash` 默认开启百炼内置搜索，问天气、新闻这类实时信息会自动检索：
+
+- 请求体带 `enable_search: true` + `search_options.forced_search: false`，闲聊不搜、实时信息才搜
+- 聊天页「联网：开/关」可一键关闭，关闭后不传搜索参数
+- 只对 `models.yaml` 里标了 `search: true` 的模型生效；降级到不支持搜索的模型时自动不带参数
+- `/api/models` 返回 `supports_search`，下拉框里显示「· 联网」
+- 默认模型由 `DEFAULT_MODEL_ID` 控制，前端首次进入优先选中它
 
 ### 备用模型（自动降级）
 
@@ -163,7 +180,7 @@ providers:
 | GET/PATCH/DELETE | `/api/conversations/{id}` | 详情 / 改名换模型改人设 / 软删 |
 | GET | `/api/conversations/{id}/export` | 导出 Markdown |
 | GET | `/api/conversations/{id}/messages` | 消息列表（含 reasoning） |
-| POST | `/api/chat/stream` | 流式对话（SSE） |
+| POST | `/api/chat/stream` | 流式对话（SSE，`web_search` 默认 `true`） |
 | GET/POST | `/api/personas` | 我的角色 / 创建角色 |
 | PATCH/DELETE | `/api/personas/{id}` | 更新 / 删除角色 |
 | POST | `/api/personas/beautify` | 大模型美化角色提示词 |

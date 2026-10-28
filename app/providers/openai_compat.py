@@ -9,8 +9,8 @@ from typing import Any
 
 import httpx
 
-from app.errors import AppError
-from app.logging_config import get_logger
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 from app.providers.base import ChatProvider, Chunk
 
 logger = get_logger("app.provider")

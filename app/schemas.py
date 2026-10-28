@@ -177,6 +177,8 @@ class ChatRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=100_000)
     # 不传则用会话的默认模型
     model_id: str | None = Field(default=None, max_length=64)
+    # 联网搜索默认开启；仅对支持搜索的模型生效
+    web_search: bool = True
 
 
 # ---------------- 管理后台 ----------------

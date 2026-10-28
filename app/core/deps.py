@@ -13,11 +13,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
+from app.core.logging_setup import user_id_ctx
+from app.core.security import decode_access_token
 from app.db import get_session
-from app.errors import AppError
-from app.logging_config import user_id_ctx
-from app.models import Conversation, RevokedToken, User
-from app.security import decode_access_token
+from app.db.models import Conversation, RevokedToken, User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

@@ -11,9 +11,9 @@ from typing import Any
 
 import httpx
 
-from app.config import get_settings
-from app.errors import AppError
-from app.logging_config import get_logger
+from app.core.config import get_settings
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 
 logger = get_logger("app.voice")
 

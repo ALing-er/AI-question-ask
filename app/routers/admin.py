@@ -12,12 +12,12 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.audit import write_audit
+from app.core.deps import AdminUser
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
+from app.core.security import hash_password
 from app.db import get_session
-from app.deps import AdminUser
-from app.errors import AppError
-from app.logging_config import get_logger
-from app.models import AuditLog, Conversation, Message, User
+from app.db.models import AuditLog, Conversation, Message, User
 from app.schemas import (
     AdminResetPasswordRequest,
     AdminStats,
@@ -27,7 +27,7 @@ from app.schemas import (
     AuditLogList,
     AuditLogOut,
 )
-from app.security import hash_password
+from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 logger = get_logger("app.admin")

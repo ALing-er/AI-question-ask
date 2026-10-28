@@ -7,9 +7,9 @@ from typing import Any
 
 import yaml
 
-from app.config import BASE_DIR, get_settings
-from app.errors import AppError
-from app.logging_config import get_logger
+from app.core.config import BASE_DIR, get_settings
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 from app.providers.openai_compat import OpenAICompatibleProvider
 
 logger = get_logger("app.registry")
@@ -24,6 +24,8 @@ class ModelInfo:
     provider_id: str
     provider_name: str
     available: bool
+    supports_search: bool
+    is_default: bool
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class ResolvedModel:
     model: dict[str, Any]
     api_key: str
     provider_impl: OpenAICompatibleProvider
+    supports_search: bool
 
 
 @lru_cache(maxsize=1)
@@ -62,12 +65,16 @@ def _api_key_of(provider: dict[str, Any]) -> str:
 
 
 def list_models() -> list[ModelInfo]:
+    settings = get_settings()
     result: list[ModelInfo] = []
     for provider in load_config()["providers"]:
         if not provider.get("enabled", True):
             continue
         key = _api_key_of(provider)
         for model in provider.get("models") or []:
+            # hidden 的模型只用于已有会话和 fallback，不进前端可选列表
+            if model.get("hidden"):
+                continue
             result.append(
                 ModelInfo(
                     id=model["id"],
@@ -75,6 +82,8 @@ def list_models() -> list[ModelInfo]:
                     provider_id=provider["id"],
                     provider_name=provider.get("name") or provider["id"],
                     available=bool(key),
+                    supports_search=bool(model.get("search")),
+                    is_default=model["id"] == settings.default_model_id,
                 )
             )
     return result
@@ -138,6 +147,7 @@ def resolve(model_id: str) -> ResolvedModel:
                 model=model,
                 api_key=api_key,
                 provider_impl=impl,
+                supports_search=bool(model.get("search")),
             )
 
     raise AppError("MODEL_NOT_FOUND", f"模型 {model_id} 不存在或未启用")

@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db import Base, UTCDateTime
+from app.db.session import Base, UTCDateTime
 
 
 def now_utc() -> datetime:

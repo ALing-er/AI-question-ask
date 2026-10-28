@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     max_context_turns: int = 10
     max_context_chars: int = 24000
     max_message_chars: int = 8000
-    default_model_id: str = "deepseek-chat"
+    default_model_id: str = "qwen3.8-flash"
     default_system_prompt: str = ""
     # 提示词美化使用的模型
     persona_model_id: str = "deepseek-chat"

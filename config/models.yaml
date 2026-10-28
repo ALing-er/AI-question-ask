@@ -7,6 +7,9 @@
 #   enabled      provider 级别开关，false 时整个 provider 不出现在 /api/models
 #   fallback     主模型失败（连不上/超时/限流/密钥无效）时自动切换的模型，
 #                可以写一个，也可以写成列表；支持跨供应商
+#   search       该模型支持百炼内置联网搜索（enable_search）
+#   hidden       true 时不在 /api/models 的「可选择列表」里出现，
+#                但仍可被已有会话/fallback 解析调用
 
 providers:
   # ---------------- 火山方舟（豆包） ----------------
@@ -40,6 +43,7 @@ providers:
       - id: deepseek-reasoner
         name: DeepSeek Reasoner
         fallback: deepseek-v4-pro-0813
+        hidden: true
 
   # ---------------- 阿里云百炼 ----------------
   # 兼容 OpenAI 协议，模型目录按工作空间授权。
@@ -54,12 +58,18 @@ providers:
       - id: qwen3.8-max
         name: 通义千问 3.8 Max
         fallback: deepseek-chat
+        search: true
+        hidden: true
       - id: qwen3.8-flash
         name: 通义千问 3.8 Flash
         fallback: deepseek-chat
+        search: true
       - id: deepseek-v4-pro-0813
         name: DeepSeek V4 Pro（百炼）
         fallback: deepseek-chat
+        search: true
+        hidden: true
       - id: kimi-k3
         name: Kimi K3
         fallback: deepseek-chat
+        hidden: true

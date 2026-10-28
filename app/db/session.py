@@ -11,7 +11,7 @@ from sqlalchemy import DateTime, TypeDecorator, delete, event, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-from app.config import BASE_DIR, get_settings
+from app.core.config import BASE_DIR, get_settings
 
 settings = get_settings()
 
@@ -161,7 +161,7 @@ def _migrate_sqlite(sync_conn) -> None:
 
 async def init_db() -> None:
     """建表 + 补列（幂等）。需要先 import models，否则 metadata 是空的。"""
-    from app import models  # noqa: F401
+    from app.db import models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -170,7 +170,7 @@ async def init_db() -> None:
 
 async def cleanup_revoked_tokens() -> None:
     """清理已过期的登出黑名单记录。"""
-    from app.models import RevokedToken
+    from app.db.models import RevokedToken
 
     now = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as session:

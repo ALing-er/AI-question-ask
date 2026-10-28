@@ -39,6 +39,10 @@ export interface ModelInfo {
   provider_id: string
   provider_name: string
   available: boolean
+  /** 支持内置联网搜索（百炼 enable_search） */
+  supports_search: boolean
+  /** 后端配置的默认模型 */
+  is_default: boolean
 }
 
 export interface TokenResponse {

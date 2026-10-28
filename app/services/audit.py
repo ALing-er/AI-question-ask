@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, User
+from app.db.models import AuditLog, User
 
 
 def write_audit(

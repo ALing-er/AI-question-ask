@@ -5,11 +5,11 @@
 """
 from sqlalchemy import select
 
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.logging_setup import get_logger
+from app.core.security import hash_password
 from app.db import AsyncSessionLocal
-from app.logging_config import get_logger
-from app.models import User
-from app.security import hash_password
+from app.db.models import User
 
 logger = get_logger("app.bootstrap")
 

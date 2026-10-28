@@ -11,12 +11,12 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.deps import CurrentUser, OwnConversation
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 from app.db import get_session
-from app.deps import CurrentUser, OwnConversation
-from app.errors import AppError
-from app.logging_config import get_logger
-from app.models import Conversation, Message
+from app.db.models import Conversation, Message
 from app.providers import registry
 from app.schemas import (
     ConversationCreate,

@@ -19,12 +19,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.deps import CurrentUser
+from app.core.errors import AppError
+from app.core.logging_setup import get_logger
 from app.db import AsyncSessionLocal, get_session
-from app.deps import CurrentUser
-from app.errors import AppError
-from app.logging_config import get_logger
-from app.models import Conversation, Message
+from app.db.models import Conversation, Message
 from app.providers import registry
 from app.schemas import ChatRequest
 
@@ -158,6 +158,7 @@ async def chat_stream(
             conversation_id=conversation.id,
             model_id=model_id,
             context=context,
+            web_search=payload.web_search,
             request=request,
         ),
         media_type="text/event-stream",
@@ -165,17 +166,31 @@ async def chat_stream(
     )
 
 
-async def _open_stream(model_id: str, context: list[dict]):
+SEARCH_OPTIONS = {
+    "enable_search": True,
+    # 由模型自己判断要不要搜：闲聊不搜，问天气/新闻这类实时信息才搜
+    "search_options": {
+        "forced_search": False,
+        "search_strategy": "turbo",
+        "enable_source": True,
+    },
+}
+
+
+async def _open_stream(model_id: str, context: list[dict], web_search: bool = True):
     """按 model_id 打开上游流，并先取出第一个 chunk。
 
     第一个 chunk 到手才算"成功"——只有在这之前，才允许切换备用模型。
     返回 (generator, first_chunk_or_None)。
     """
     resolved = registry.resolve(model_id)
+    # 只有模型支持、且用户没关掉时才带搜索参数，否则上游会直接报错
+    options = SEARCH_OPTIONS if web_search and resolved.supports_search else None
     agen = resolved.provider_impl.stream_chat(
         model_id=model_id,
         messages=context,
         api_key=resolved.api_key,
+        options=options,
     )
     try:
         first = await agen.__anext__()
@@ -189,6 +204,7 @@ async def _event_stream(
     conversation_id: int,
     model_id: str,
     context: list[dict],
+    web_search: bool,
     request: Request,
 ) -> AsyncIterator[str]:
     started = time.perf_counter()
@@ -202,7 +218,7 @@ async def _event_stream(
 
     for candidate in chain:
         try:
-            agen, first = await _open_stream(candidate, context)
+            agen, first = await _open_stream(candidate, context, web_search)
             used_model = candidate
             if candidate != model_id:
                 logger.warning(

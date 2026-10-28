@@ -1,7 +1,7 @@
 """公开的系统配置，供登录页 / 注册页 / 输入框使用。"""
 from fastapi import APIRouter
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 

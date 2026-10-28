@@ -6,11 +6,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.core.config import get_settings
+from app.core.deps import CurrentUser
+from app.core.errors import AppError
 from app.db import get_session
-from app.deps import CurrentUser
-from app.errors import AppError
-from app.models import CustomVoice
+from app.db.models import CustomVoice
 from app.schemas import VoiceDesignRequest, VoiceDesignResponse, VoiceOptionOut
 from app.services import voice as voice_service
 
