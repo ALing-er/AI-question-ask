@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     max_message_chars: int = 8000
     default_model_id: str = "deepseek-chat"
     default_system_prompt: str = ""
+    # 提示词美化使用的模型
+    persona_model_id: str = "deepseek-chat"
     upstream_connect_timeout: float = 10.0
     upstream_total_timeout: float = 120.0
 

@@ -46,6 +46,29 @@ class User(Base):
         return f"<User id={self.id} username={self.username} role={self.role}>"
 
 
+class Persona(Base):
+    """用户保存的角色设定，可重复应用到不同会话。"""
+
+    __tablename__ = "personas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=now_utc, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=now_utc, onupdate=now_utc, nullable=False
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+    __table_args__ = (Index("ix_personas_user_updated", "user_id", "updated_at"),)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 

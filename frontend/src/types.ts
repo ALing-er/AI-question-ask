@@ -46,6 +46,15 @@ export interface TokenResponse {
   user: UserInfo
 }
 
+export interface Persona {
+  id: number
+  name: string
+  prompt: string
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SystemConfig {
   app_name: string
   allow_registration: boolean

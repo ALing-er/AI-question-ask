@@ -52,10 +52,10 @@ export default function RegisterPage() {
   if (!allowRegistration) {
     return (
       <div className="flex h-full items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center shadow-xl">
-          <h1 className="mb-2 text-xl font-semibold text-slate-100">注册已关闭</h1>
-          <p className="mb-5 text-sm text-slate-400">当前平台不开放自助注册。</p>
-          <Link to="/login" className="text-sm text-blue-400 hover:underline">
+        <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h1 className="mb-2 text-xl font-semibold text-slate-900">注册已关闭</h1>
+          <p className="mb-5 text-sm text-slate-500">当前平台不开放自助注册。</p>
+          <Link to="/login" className="text-sm text-blue-600 hover:underline">
             返回登录
           </Link>
         </div>
@@ -67,43 +67,43 @@ export default function RegisterPage() {
     <div className="flex h-full items-center justify-center px-4">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl"
+        className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
       >
-        <h1 className="mb-1 text-xl font-semibold text-slate-100">创建账号</h1>
-        <p className="mb-6 text-sm text-slate-400">注册后自动登录</p>
+        <h1 className="mb-1 text-xl font-semibold text-slate-900">创建账号</h1>
+        <p className="mb-6 text-sm text-slate-500">注册后自动登录</p>
 
-        <label className="mb-1 block text-sm text-slate-300">用户名</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">用户名</label>
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="mb-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className="mb-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           placeholder="3-20 位字母、数字或下划线"
         />
         <p className="mb-4 text-xs text-slate-500">只能用字母、数字、下划线，3-20 位</p>
 
-        <label className="mb-1 block text-sm text-slate-300">密码</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">密码</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
-          className="mb-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className="mb-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           placeholder="至少 8 位"
         />
         <p className="mb-4 text-xs text-slate-500">至少 8 位</p>
 
-        <label className="mb-1 block text-sm text-slate-300">确认密码</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">确认密码</label>
         <input
           type="password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className="mb-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           placeholder="再输一次"
         />
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -111,14 +111,14 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading || !username || !password || !confirm}
-          className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? '注册中…' : '注册'}
         </button>
 
-        <p className="mt-5 text-center text-sm text-slate-400">
+        <p className="mt-5 text-center text-sm text-slate-500">
           已有账号？
-          <Link to="/login" className="ml-1 text-blue-400 hover:underline">
+          <Link to="/login" className="ml-1 text-blue-600 hover:underline">
             去登录
           </Link>
         </p>

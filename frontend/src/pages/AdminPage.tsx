@@ -147,24 +147,27 @@ export default function AdminPage() {
   const logPage = Math.floor(logOffset / limit) + 1
   const logTotalPages = Math.max(1, Math.ceil(logTotal / limit))
 
+  const btnBase =
+    'rounded border bg-white px-2 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40'
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <header className="flex items-center gap-3 border-b border-slate-800 px-6 py-4">
+    <div className="flex h-full flex-col overflow-y-auto bg-slate-50">
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold text-slate-100">管理后台</h1>
-          <p className="mt-0.5 text-xs text-slate-400">
-            当前管理员：<span className="text-slate-200">{user?.nickname || user?.username}</span>
+          <h1 className="text-lg font-semibold text-slate-900">管理后台</h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            当前管理员：<span className="text-slate-700">{user?.nickname || user?.username}</span>
           </p>
         </div>
         <Link
           to="/"
-          className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-500"
+          className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 transition hover:bg-blue-50"
         >
           返回对话
         </Link>
         <button
           onClick={handleLogout}
-          className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-500"
+          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm text-amber-600 transition hover:bg-amber-50"
         >
           退出登录
         </button>
@@ -182,32 +185,32 @@ export default function AdminPage() {
           ].map(([label, value]) => (
             <div
               key={label}
-              className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
             >
-              <div className="text-xs text-slate-400">{label}</div>
-              <div className="mt-1 text-xl font-semibold text-slate-100">{value}</div>
+              <div className="text-xs text-slate-500">{label}</div>
+              <div className="mt-1 text-xl font-semibold text-slate-900">{value}</div>
             </div>
           ))}
         </section>
 
         {notice && (
-          <div className="mt-4 rounded-lg border border-emerald-900/60 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mt-4 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
 
-        <div className="mt-5 flex items-center gap-2 border-b border-slate-800">
+        <div className="mt-5 flex items-center gap-2 border-b border-slate-200">
           <button
             onClick={() => setTab('users')}
             className={`px-3 py-2 text-sm transition ${
               tab === 'users'
-                ? 'border-b-2 border-blue-500 text-slate-100'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-blue-600 font-medium text-blue-700'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             用户管理
@@ -216,8 +219,8 @@ export default function AdminPage() {
             onClick={() => setTab('audit')}
             className={`px-3 py-2 text-sm transition ${
               tab === 'audit'
-                ? 'border-b-2 border-blue-500 text-slate-100'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-blue-600 font-medium text-blue-700'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             审计日志
@@ -234,7 +237,7 @@ export default function AdminPage() {
                   setOffset(0)
                 }}
                 placeholder="搜索用户名 / 昵称"
-                className="w-56 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-slate-500"
+                className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-500"
               />
               <select
                 value={status}
@@ -242,20 +245,20 @@ export default function AdminPage() {
                   setStatus(e.target.value)
                   setOffset(0)
                 }}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-200 outline-none"
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
               >
                 <option value="">全部状态</option>
                 <option value="active">正常</option>
                 <option value="disabled">已停用</option>
               </select>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-400">
                 共 {total} 人{loading ? ' · 加载中…' : ''}
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-slate-900/80 text-xs text-slate-400">
+                <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">用户名</th>
                     <th className="px-3 py-2 font-medium">角色</th>
@@ -271,19 +274,19 @@ export default function AdminPage() {
                   {users.map((u) => {
                     const isSelf = u.id === user?.id
                     return (
-                      <tr key={u.id} className="border-t border-slate-800/80">
+                      <tr key={u.id} className="border-t border-slate-200">
                         <td className="px-3 py-2">
-                          <div className="text-slate-100">{u.username}</div>
+                          <div className="text-slate-800">{u.username}</div>
                           {u.nickname && (
-                            <div className="text-xs text-slate-500">{u.nickname}</div>
+                            <div className="text-xs text-slate-400">{u.nickname}</div>
                           )}
                         </td>
                         <td className="px-3 py-2">
                           <span
                             className={`rounded px-1.5 py-0.5 text-xs ${
                               u.role === 'admin'
-                                ? 'bg-blue-950/60 text-blue-300'
-                                : 'bg-slate-800 text-slate-300'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-slate-100 text-slate-600'
                             }`}
                           >
                             {u.role}
@@ -291,15 +294,15 @@ export default function AdminPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span
-                            className={`text-xs ${
-                              u.status === 'active' ? 'text-emerald-400' : 'text-amber-400'
+                            className={`text-xs font-medium ${
+                              u.status === 'active' ? 'text-emerald-600' : 'text-amber-600'
                             }`}
                           >
                             {u.status === 'active' ? '正常' : '已停用'}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-slate-300">{u.conversation_count}</td>
-                        <td className="px-3 py-2 text-slate-300">{u.message_count}</td>
+                        <td className="px-3 py-2 text-slate-600">{u.conversation_count}</td>
+                        <td className="px-3 py-2 text-slate-600">{u.message_count}</td>
                         <td className="px-3 py-2 text-xs text-slate-400">
                           {new Date(u.created_at).toLocaleString()}
                         </td>
@@ -311,21 +314,25 @@ export default function AdminPage() {
                             <button
                               onClick={() => toggleStatus(u)}
                               disabled={isSelf}
-                              className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 disabled:opacity-40"
+                              className={`${btnBase} ${
+                                u.status === 'active'
+                                  ? 'border-amber-300 text-amber-700 hover:bg-amber-50'
+                                  : 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                              }`}
                             >
                               {u.status === 'active' ? '禁用' : '启用'}
                             </button>
                             <button
                               onClick={() => resetPassword(u)}
                               disabled={isSelf}
-                              className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 disabled:opacity-40"
+                              className={`${btnBase} border-blue-300 text-blue-700 hover:bg-blue-50`}
                             >
                               重置密码
                             </button>
                             <button
                               onClick={() => removeUser(u)}
                               disabled={isSelf || u.role === 'admin'}
-                              className="rounded border border-red-900/70 px-2 py-1 text-xs text-red-300 transition hover:border-red-700 disabled:opacity-40"
+                              className={`${btnBase} border-red-300 text-red-600 hover:bg-red-50`}
                             >
                               删除
                             </button>
@@ -336,7 +343,7 @@ export default function AdminPage() {
                   })}
                   {users.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">
                         没有匹配的用户
                       </td>
                     </tr>
@@ -345,21 +352,21 @@ export default function AdminPage() {
               </table>
             </div>
 
-            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-400">
+            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-500">
               <span>
                 第 {page} / {totalPages} 页
               </span>
               <button
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}
-                className="rounded border border-slate-700 px-2 py-1 transition hover:border-slate-500 disabled:opacity-40"
+                className="rounded border border-slate-300 bg-white px-2 py-1 transition hover:bg-slate-50 disabled:opacity-40"
               >
                 上一页
               </button>
               <button
                 onClick={() => setOffset(offset + limit)}
                 disabled={offset + limit >= total}
-                className="rounded border border-slate-700 px-2 py-1 transition hover:border-slate-500 disabled:opacity-40"
+                className="rounded border border-slate-300 bg-white px-2 py-1 transition hover:bg-slate-50 disabled:opacity-40"
               >
                 下一页
               </button>
@@ -375,14 +382,14 @@ export default function AdminPage() {
                   setLogOffset(0)
                 }}
                 placeholder="搜索操作者 / 动作 / 目标 ID"
-                className="w-64 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-slate-500"
+                className="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-500"
               />
-              <span className="text-xs text-slate-500">共 {logTotal} 条</span>
+              <span className="text-xs text-slate-400">共 {logTotal} 条</span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="w-full min-w-[820px] text-left text-sm">
-                <thead className="bg-slate-900/80 text-xs text-slate-400">
+                <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">时间</th>
                     <th className="px-3 py-2 font-medium">操作者</th>
@@ -394,24 +401,24 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="border-t border-slate-800/80">
+                    <tr key={log.id} className="border-t border-slate-200">
                       <td className="px-3 py-2 text-xs text-slate-400">
                         {new Date(log.created_at).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-slate-200">{log.actor_username}</td>
-                      <td className="px-3 py-2 text-xs text-slate-300">{log.action}</td>
+                      <td className="px-3 py-2 text-slate-700">{log.actor_username}</td>
+                      <td className="px-3 py-2 text-xs text-slate-600">{log.action}</td>
                       <td className="px-3 py-2 text-xs text-slate-400">
                         {log.target_type ? `${log.target_type}#${log.target_id ?? '-'}` : '-'}
                       </td>
                       <td className="max-w-[280px] truncate px-3 py-2 text-xs text-slate-400">
                         {log.detail ? JSON.stringify(log.detail) : '-'}
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-500">{log.ip ?? '-'}</td>
+                      <td className="px-3 py-2 text-xs text-slate-400">{log.ip ?? '-'}</td>
                     </tr>
                   ))}
                   {logs.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-400">
                         暂无审计记录
                       </td>
                     </tr>
@@ -420,21 +427,21 @@ export default function AdminPage() {
               </table>
             </div>
 
-            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-400">
+            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-500">
               <span>
                 第 {logPage} / {logTotalPages} 页
               </span>
               <button
                 onClick={() => setLogOffset(Math.max(0, logOffset - limit))}
                 disabled={logOffset === 0}
-                className="rounded border border-slate-700 px-2 py-1 transition hover:border-slate-500 disabled:opacity-40"
+                className="rounded border border-slate-300 bg-white px-2 py-1 transition hover:bg-slate-50 disabled:opacity-40"
               >
                 上一页
               </button>
               <button
                 onClick={() => setLogOffset(logOffset + limit)}
                 disabled={logOffset + limit >= logTotal}
-                className="rounded border border-slate-700 px-2 py-1 transition hover:border-slate-500 disabled:opacity-40"
+                className="rounded border border-slate-300 bg-white px-2 py-1 transition hover:bg-slate-50 disabled:opacity-40"
               >
                 下一页
               </button>

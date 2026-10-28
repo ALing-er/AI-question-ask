@@ -92,6 +92,40 @@ class MessageOut(BaseModel):
     created_at: datetime
 
 
+# ---------------- 角色设定 ----------------
+
+
+class PersonaCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=64)
+    prompt: str = Field(..., min_length=1, max_length=4000)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class PersonaUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    prompt: str | None = Field(default=None, min_length=1, max_length=4000)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class PersonaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    prompt: str
+    description: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BeautifyPromptRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=4000)
+
+
+class BeautifyPromptResponse(BaseModel):
+    prompt: str
+
+
 # ---------------- 对话 ----------------
 
 

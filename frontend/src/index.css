@@ -8,8 +8,8 @@ body,
 
 body {
   margin: 0;
-  background-color: #020617;
-  color: #e2e8f0;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family:
     system-ui,
     -apple-system,
@@ -64,24 +64,26 @@ body {
   margin: 0.2rem 0;
 }
 .markdown a {
-  color: #60a5fa;
+  color: #2563eb;
   text-decoration: underline;
 }
 .markdown blockquote {
-  border-left: 3px solid #334155;
+  border-left: 3px solid #cbd5e1;
   padding-left: 0.75rem;
-  color: #94a3b8;
+  color: #475569;
   margin: 0.5rem 0;
 }
 .markdown code {
-  background: rgba(148, 163, 184, 0.16);
+  background: #f1f5f9;
+  color: #0f172a;
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
   font-family: 'Cascadia Code', Consolas, monospace;
 }
 .markdown pre {
-  background: #0d1117;
+  background: #0f172a;
+  color: #e2e8f0;
   border-radius: 0.5rem;
   padding: 0.85rem;
   overflow-x: auto;
@@ -89,6 +91,7 @@ body {
 }
 .markdown pre code {
   background: transparent;
+  color: inherit;
   padding: 0;
   font-size: 0.85rem;
 }
@@ -99,9 +102,9 @@ body {
 }
 .markdown th,
 .markdown td {
-  border: 1px solid #334155;
+  border: 1px solid #cbd5e1;
   padding: 0.35rem 0.6rem;
 }
 .markdown th {
-  background: #1e293b;
+  background: #f1f5f9;
 }

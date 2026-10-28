@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   Conversation,
   ModelInfo,
+  Persona,
   SystemConfig,
   TokenResponse,
   UserInfo,
@@ -150,6 +151,38 @@ export async function exportConversation(id: number): Promise<Blob> {
   }
   return res.blob()
 }
+
+// ---------------- 角色设定 ----------------
+
+export const listPersonas = () => request<Persona[]>('/api/personas')
+
+export const createPersona = (data: {
+  name: string
+  prompt: string
+  description?: string | null
+}) =>
+  request<Persona>('/api/personas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const updatePersona = (
+  id: number,
+  data: { name?: string; prompt?: string; description?: string | null },
+) =>
+  request<Persona>(`/api/personas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+
+export const deletePersona = (id: number) =>
+  request<void>(`/api/personas/${id}`, { method: 'DELETE' })
+
+export const beautifyPersonaPrompt = (prompt: string) =>
+  request<{ prompt: string }>('/api/personas/beautify', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  })
 
 // ---------------- 管理后台 ----------------
 

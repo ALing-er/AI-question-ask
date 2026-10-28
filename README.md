@@ -1,6 +1,6 @@
 # AI 问答平台
 
-多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台。
+多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台、角色设定、语音输入与朗读。
 
 ## 技术栈
 
@@ -28,7 +28,7 @@ ai-qa/
 │   │   ├── bootstrap.py     种子管理员
 │   │   ├── audit.py         审计日志写入
 │   │   ├── providers/       模型适配层
-│   │   └── routers/         auth / conversations / models / chat / admin / system
+│   │   └── routers/         auth / conversations / models / chat / admin / personas / system
 │   ├── config/models.yaml   模型清单（加模型只改这里）
 │   ├── data/app.db          SQLite
 │   ├── logs/app.log
@@ -39,7 +39,8 @@ ai-qa/
         ├── api.ts           REST + SSE 客户端
         ├── store/auth.ts    登录态
         ├── pages/           Login / Register / Chat / Admin
-        └── components/      会话列表 / 消息气泡 / 输入框 / 模型选择 / 人设弹窗
+        ├── components/      会话列表 / 消息气泡 / 输入框 / 模型选择 / 角色弹窗
+        └── utils/           浏览器语音朗读
 ```
 
 ## 启动
@@ -154,6 +155,9 @@ providers:
 | GET | `/api/conversations/{id}/export` | 导出 Markdown |
 | GET | `/api/conversations/{id}/messages` | 消息列表（含 reasoning） |
 | POST | `/api/chat/stream` | 流式对话（SSE） |
+| GET/POST | `/api/personas` | 我的角色 / 创建角色 |
+| PATCH/DELETE | `/api/personas/{id}` | 更新 / 删除角色 |
+| POST | `/api/personas/beautify` | 大模型美化角色提示词 |
 | GET | `/api/admin/users` | 用户列表（管理员） |
 | PATCH | `/api/admin/users/{id}` | 启用 / 禁用（管理员） |
 | POST | `/api/admin/users/{id}/reset-password` | 重置密码（管理员） |

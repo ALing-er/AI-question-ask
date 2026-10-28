@@ -20,6 +20,7 @@ from app.routers import auth as auth_router
 from app.routers import chat as chat_router
 from app.routers import conversations as conversations_router
 from app.routers import models as models_router
+from app.routers import personas as personas_router
 from app.routers import system as system_router
 
 APP_VERSION = "0.1.0"
@@ -120,6 +121,7 @@ app.include_router(conversations_router.router)
 app.include_router(models_router.router)
 app.include_router(chat_router.router)
 app.include_router(admin_router.router)
+app.include_router(personas_router.router)
 app.include_router(system_router.router)
 
 

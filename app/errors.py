@@ -42,6 +42,8 @@ ERROR_CATALOG: dict[str, tuple[int, str]] = {
     "USER_NOT_FOUND": (404, "用户不存在"),
     # 会话
     "CONV_NOT_FOUND": (404, "会话不存在"),
+    # 角色设定
+    "PERSONA_NOT_FOUND": (404, "角色设定不存在"),
     # 模型
     "MODEL_NOT_FOUND": (404, "模型不存在或未启用"),
     "MODEL_KEY_MISSING": (500, "该模型未配置 API Key"),

@@ -4,9 +4,10 @@ import Composer from '../components/Composer'
 import ConversationList from '../components/ConversationList'
 import MessageBubble from '../components/MessageBubble'
 import ModelSelect from '../components/ModelSelect'
-import SystemPromptDialog from '../components/SystemPromptDialog'
+import PersonaDialog from '../components/PersonaDialog'
 import { useAuth } from '../store/auth'
-import type { ChatMessage, Conversation, ModelInfo } from '../types'
+import type { ChatMessage, Conversation, ModelInfo, Persona } from '../types'
+import { speakText, stopSpeaking } from '../utils/speech'
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : '操作失败')
 
@@ -25,9 +26,11 @@ export default function ChatPage() {
   const [ready, setReady] = useState(false)
   const [query, setQuery] = useState('')
   const [maxChars, setMaxChars] = useState(8000)
-  const [promptOpen, setPromptOpen] = useState(false)
-  const [savingPrompt, setSavingPrompt] = useState(false)
+  const [personas, setPersonas] = useState<Persona[]>([])
+  const [personaOpen, setPersonaOpen] = useState(false)
+  const [savingPersona, setSavingPersona] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [autoRead, setAutoRead] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
   const activeIdRef = useRef<number | null>(null)
@@ -42,15 +45,17 @@ export default function ChatPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const [m, cs, cfg] = await Promise.all([
+        const [m, cs, cfg, ps] = await Promise.all([
           api.listModels(),
           api.listConversations(),
           api.getSystemConfig(),
+          api.listPersonas().catch(() => [] as Persona[]),
         ])
         if (cancelled) return
         setModels(m.models)
         setConversations(cs)
         setMaxChars(cfg.max_message_chars || 8000)
+        setPersonas(ps)
 
         if (cs.length > 0) {
           setActiveId(cs[0].id)
@@ -75,6 +80,10 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    return () => stopSpeaking()
+  }, [])
+
   // 会话搜索：输入停止 250ms 后再请求，避免每个字符都打一次接口
   useEffect(() => {
     if (!ready) return
@@ -90,6 +99,7 @@ export default function ChatPage() {
 
   async function openConversation(conv: Conversation) {
     if (streaming) return
+    stopSpeaking()
     setActiveId(conv.id)
     activeIdRef.current = conv.id
     setModelId(conv.model_id)
@@ -103,6 +113,7 @@ export default function ChatPage() {
 
   async function newConversation() {
     if (streaming) return
+    stopSpeaking()
     setQuery('')
     try {
       const conv = await api.createConversation(modelId || undefined)
@@ -174,20 +185,64 @@ export default function ChatPage() {
     }
   }
 
-  async function saveSystemPrompt(prompt: string) {
-    if (!activeId) return
-    setSavingPrompt(true)
+  async function beautifyPrompt(prompt: string): Promise<string | null> {
+    try {
+      const res = await api.beautifyPersonaPrompt(prompt)
+      return res.prompt
+    } catch (e) {
+      setError(errText(e))
+      return null
+    }
+  }
+
+  async function applyPersona(
+    name: string,
+    prompt: string,
+    personaId: number | null,
+  ) {
+    setSavingPersona(true)
     setError(null)
     try {
-      const updated = await api.updateConversation(activeId, {
-        system_prompt: prompt.trim() ? prompt.trim() : null,
+      let convId = activeId
+      if (!convId) {
+        const conv = await api.createConversation(modelId || undefined)
+        setConversations((prev) => [conv, ...prev])
+        setActiveId(conv.id)
+        activeIdRef.current = conv.id
+        setMessages([])
+        setQuery('')
+        if (!modelId) setModelId(conv.model_id)
+        convId = conv.id
+      }
+
+      const saved = personaId
+        ? await api.updatePersona(personaId, { name, prompt })
+        : await api.createPersona({ name, prompt })
+      const updated = await api.updateConversation(convId, {
+        system_prompt: saved.prompt,
       })
       setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
-      setPromptOpen(false)
+      setPersonas((prev) => {
+        const exists = prev.some((p) => p.id === saved.id)
+        return exists
+          ? prev.map((p) => (p.id === saved.id ? saved : p))
+          : [saved, ...prev]
+      })
+      setPersonaOpen(false)
     } catch (e) {
       setError(errText(e))
     } finally {
-      setSavingPrompt(false)
+      setSavingPersona(false)
+    }
+  }
+
+  async function removePersona(persona: Persona) {
+    if (!window.confirm(`确定删除角色「${persona.name}」？`)) return
+    try {
+      await api.deletePersona(persona.id)
+      setPersonas((prev) => prev.filter((p) => p.id !== persona.id))
+    } catch (e) {
+      setError(errText(e))
     }
   }
 
@@ -225,6 +280,7 @@ export default function ChatPage() {
     const text = input.trim()
     if (!text || streaming) return
 
+    stopSpeaking()
     setError(null)
     setInput('')
 
@@ -280,6 +336,8 @@ export default function ChatPage() {
     abortRef.current = controller
     setStreaming(true)
 
+    let answerText = ''
+
     try {
       await api.streamChat({
         conversationId: convId,
@@ -287,20 +345,26 @@ export default function ChatPage() {
         modelId: modelId || undefined,
         signal: controller.signal,
         handlers: {
-          onDelta: (t) =>
+          onDelta: (t) => {
+            answerText += t
             setMessages((prev) =>
-              prev.map((m) => (m.id === tempAssistantId ? { ...m, content: m.content + t } : m)),
-            ),
+              prev.map((m) =>
+                m.id === tempAssistantId ? { ...m, content: m.content + t } : m,
+              ),
+            )
+          },
           onReasoning: (t) =>
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempAssistantId ? { ...m, reasoning: (m.reasoning ?? '') + t } : m,
               ),
             ),
-          onDone: () =>
+          onDone: () => {
             setMessages((prev) =>
               prev.map((m) => (m.id === tempAssistantId ? { ...m, status: 'done' } : m)),
-            ),
+            )
+            if (autoRead && answerText) speakText(answerText)
+          },
           onError: (err) => {
             setError(`${err.message}（${err.code}）`)
             setMessages((prev) =>
@@ -333,7 +397,7 @@ export default function ChatPage() {
   const currentModel = models.find((m) => m.id === modelId)
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-white">
       <ConversationList
         conversations={conversations}
         activeId={activeId}
@@ -349,36 +413,50 @@ export default function ChatPage() {
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-slate-800 px-4 py-3">
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-slate-100">
+            <div className="truncate text-sm font-medium text-slate-900">
               {activeConv?.title ?? '新会话'}
             </div>
-            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <span>
                 当前模型：
-                <span className="text-slate-200">
+                <span className="text-slate-700">
                   {(currentModel?.name ?? modelId) || '未选择'}
                 </span>
               </span>
-              {streaming && <span className="animate-pulse text-blue-400">正在生成…</span>}
+              {streaming && <span className="animate-pulse text-blue-600">正在生成…</span>}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button
-              onClick={() => setPromptOpen(true)}
-              disabled={!activeId || streaming}
-              className="rounded-lg border border-slate-700 px-2 py-1.5 text-xs text-slate-300 transition hover:border-slate-500 disabled:opacity-40"
+              onClick={() => setPersonaOpen(true)}
+              disabled={streaming}
+              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 transition hover:border-blue-400 hover:text-blue-600 disabled:opacity-40"
             >
-              人设
+              角色
             </button>
             <button
               onClick={exportCurrent}
               disabled={!activeId || exporting}
-              className="rounded-lg border border-slate-700 px-2 py-1.5 text-xs text-slate-300 transition hover:border-slate-500 disabled:opacity-40"
+              className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 transition hover:border-blue-400 hover:text-blue-600 disabled:opacity-40"
             >
               {exporting ? '导出中…' : '导出'}
+            </button>
+            <button
+              onClick={() => {
+                if (autoRead) stopSpeaking()
+                setAutoRead((v) => !v)
+              }}
+              aria-pressed={autoRead}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                autoRead
+                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              自动朗读{autoRead ? '：开' : '：关'}
             </button>
             <ModelSelect
               models={models}
@@ -389,11 +467,11 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
+        <div className="flex-1 space-y-4 overflow-y-auto bg-white px-4 py-5">
           {messages.length === 0 && (
             <div className="mt-16 text-center text-sm text-slate-500">
-              <p className="mb-2 text-base text-slate-400">开始一段新的对话</p>
-              <p>直接在下方输入问题，Enter 发送</p>
+              <p className="mb-2 text-base text-slate-600">开始一段新的对话</p>
+              <p>直接在下方输入问题，Enter 发送；也可以点「语音」输入</p>
             </div>
           )}
           {messages.map((m) => (
@@ -403,7 +481,7 @@ export default function ChatPage() {
         </div>
 
         {error && (
-          <div className="mx-4 mb-2 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <div className="mx-4 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -419,12 +497,15 @@ export default function ChatPage() {
         />
       </main>
 
-      <SystemPromptDialog
-        open={promptOpen}
-        initial={activeConv?.system_prompt ?? null}
-        saving={savingPrompt}
-        onClose={() => setPromptOpen(false)}
-        onSave={saveSystemPrompt}
+      <PersonaDialog
+        open={personaOpen}
+        initialPrompt={activeConv?.system_prompt ?? null}
+        personas={personas}
+        saving={savingPersona}
+        onClose={() => setPersonaOpen(false)}
+        onBeautify={beautifyPrompt}
+        onApply={applyPersona}
+        onDelete={removePersona}
       />
     </div>
   )

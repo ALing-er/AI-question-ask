@@ -45,32 +45,32 @@ export default function LoginPage() {
     <div className="flex h-full items-center justify-center px-4">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl"
+        className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
       >
-        <h1 className="mb-1 text-xl font-semibold text-slate-100">AI 问答平台</h1>
-        <p className="mb-6 text-sm text-slate-400">登录后开始对话</p>
+        <h1 className="mb-1 text-xl font-semibold text-slate-900">AI 问答平台</h1>
+        <p className="mb-6 text-sm text-slate-500">登录后开始对话</p>
 
-        <label className="mb-1 block text-sm text-slate-300">用户名</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">用户名</label>
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className="mb-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           placeholder="请输入用户名"
         />
 
-        <label className="mb-1 block text-sm text-slate-300">密码</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">密码</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          className="mb-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           placeholder="请输入密码"
         />
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -78,15 +78,15 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading || !username || !password}
-          className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? '登录中…' : '登录'}
         </button>
 
         {allowRegistration ? (
-          <p className="mt-5 text-center text-sm text-slate-400">
+          <p className="mt-5 text-center text-sm text-slate-500">
             还没有账号？
-            <Link to="/register" className="ml-1 text-blue-400 hover:underline">
+            <Link to="/register" className="ml-1 text-blue-600 hover:underline">
               立即注册
             </Link>
           </p>
