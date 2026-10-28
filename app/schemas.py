@@ -57,6 +57,8 @@ class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, max_length=100)
     model_id: str | None = Field(default=None, max_length=64)
     system_prompt: str | None = Field(default=None, max_length=4000)
+    voice_type: str | None = Field(default=None, max_length=128)
+    voice_prompt: str | None = Field(default=None, max_length=2000)
 
 
 class ConversationUpdate(BaseModel):
@@ -64,6 +66,8 @@ class ConversationUpdate(BaseModel):
     model_id: str | None = Field(default=None, min_length=1, max_length=64)
     # 传空字符串表示清除会话级人设
     system_prompt: str | None = Field(default=None, max_length=4000)
+    voice_type: str | None = Field(default=None, max_length=128)
+    voice_prompt: str | None = Field(default=None, max_length=2000)
 
 
 class ConversationOut(BaseModel):
@@ -73,6 +77,8 @@ class ConversationOut(BaseModel):
     title: str
     model_id: str
     system_prompt: str | None
+    voice_type: str | None
+    voice_prompt: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -99,12 +105,16 @@ class PersonaCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)
     prompt: str = Field(..., min_length=1, max_length=4000)
     description: str | None = Field(default=None, max_length=255)
+    voice_type: str | None = Field(default=None, max_length=128)
+    voice_prompt: str | None = Field(default=None, max_length=2000)
 
 
 class PersonaUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=64)
     prompt: str | None = Field(default=None, min_length=1, max_length=4000)
     description: str | None = Field(default=None, max_length=255)
+    voice_type: str | None = Field(default=None, max_length=128)
+    voice_prompt: str | None = Field(default=None, max_length=2000)
 
 
 class PersonaOut(BaseModel):
@@ -114,6 +124,8 @@ class PersonaOut(BaseModel):
     name: str
     prompt: str
     description: str | None
+    voice_type: str | None
+    voice_prompt: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -124,6 +136,36 @@ class BeautifyPromptRequest(BaseModel):
 
 class BeautifyPromptResponse(BaseModel):
     prompt: str
+
+
+class VoicePromptRequest(BaseModel):
+    role_prompt: str = Field(..., min_length=1, max_length=4000)
+    current_prompt: str | None = Field(default=None, max_length=2000)
+
+
+class VoicePromptResponse(BaseModel):
+    prompt: str
+
+
+class VoiceDesignRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=64)
+    prompt: str = Field(..., min_length=1, max_length=500)
+    preview_text: str | None = Field(default=None, min_length=15, max_length=200)
+
+
+class VoiceOptionOut(BaseModel):
+    id: int | None = None
+    value: str
+    label: str
+    gender: str = ""
+    description: str = ""
+    kind: str = "custom"
+
+
+class VoiceDesignResponse(BaseModel):
+    voice: VoiceOptionOut
+    preview_audio: str
+    preview_format: str = "wav"
 
 
 # ---------------- 对话 ----------------

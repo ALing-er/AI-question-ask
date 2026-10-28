@@ -51,7 +51,7 @@ if (-not (Test-Path $python)) {
     if ($LASTEXITCODE -ne 0) { Fail '[错误] 创建虚拟环境失败。' }
 }
 
-& $python -c "import fastapi, uvicorn, sqlalchemy, aiosqlite, jwt, bcrypt, yaml" 2>$null
+& $python -c "import fastapi, uvicorn, sqlalchemy, aiosqlite, jwt, bcrypt, yaml, multipart" 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Step '[1/4] 安装后端依赖...'
     & $python -m pip install -r (Join-Path $root 'requirements.txt')

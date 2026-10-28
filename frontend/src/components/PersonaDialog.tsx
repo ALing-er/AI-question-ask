@@ -1,32 +1,60 @@
 import { useEffect, useState } from 'react'
-import type { Persona } from '../types'
+import type { Persona, VoiceDesignResponse, VoiceOption } from '../types'
+import { playBase64Audio } from '../utils/speech'
 
 interface Props {
   open: boolean
   initialPrompt: string | null
+  initialVoiceType: string | null
+  initialVoicePrompt: string | null
   personas: Persona[]
+  defaultVoice: VoiceOption | null
+  voices: VoiceOption[]
   saving: boolean
   onClose: () => void
   onBeautify: (prompt: string) => Promise<string | null>
-  onApply: (name: string, prompt: string, personaId: number | null) => void
+  onBeautifyVoice: (rolePrompt: string, currentPrompt: string) => Promise<string | null>
+  onDesignVoice: (
+    name: string,
+    prompt: string,
+  ) => Promise<VoiceDesignResponse | null>
+  onApply: (
+    name: string,
+    prompt: string,
+    personaId: number | null,
+    voiceType: string | null,
+    voicePrompt: string | null,
+  ) => void
   onDelete: (persona: Persona) => void
 }
 
 export default function PersonaDialog({
   open,
   initialPrompt,
+  initialVoiceType,
+  initialVoicePrompt,
   personas,
+  defaultVoice,
+  voices,
   saving,
   onClose,
   onBeautify,
+  onBeautifyVoice,
+  onDesignVoice,
   onApply,
   onDelete,
 }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [name, setName] = useState('自定义角色')
   const [prompt, setPrompt] = useState('')
+  const [voiceType, setVoiceType] = useState('')
+  const [voicePrompt, setVoicePrompt] = useState('')
   const [beautifying, setBeautifying] = useState(false)
+  const [beautifyingVoice, setBeautifyingVoice] = useState(false)
+  const [designing, setDesigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const defaultVoiceValue = defaultVoice?.value ?? ''
 
   useEffect(() => {
     if (!open) return
@@ -35,13 +63,28 @@ export default function PersonaDialog({
       setSelectedId(matched.id)
       setName(matched.name)
       setPrompt(matched.prompt)
+      setVoiceType(
+        matched.voice_type === defaultVoiceValue ? '' : matched.voice_type ?? '',
+      )
+      setVoicePrompt(matched.voice_prompt ?? '')
     } else {
       setSelectedId(null)
       setName('自定义角色')
       setPrompt(initialPrompt ?? '')
+      setVoiceType(
+        initialVoiceType === defaultVoiceValue ? '' : initialVoiceType ?? '',
+      )
+      setVoicePrompt(initialVoicePrompt ?? '')
     }
     setError(null)
-  }, [open, initialPrompt, personas])
+  }, [
+    open,
+    initialPrompt,
+    initialVoiceType,
+    initialVoicePrompt,
+    personas,
+    defaultVoiceValue,
+  ])
 
   if (!open) return null
 
@@ -51,6 +94,8 @@ export default function PersonaDialog({
     if (!value) {
       setSelectedId(null)
       setName('自定义角色')
+      setVoiceType('')
+      setVoicePrompt('')
       return
     }
     const persona = personas.find((p) => p.id === Number(value))
@@ -58,6 +103,10 @@ export default function PersonaDialog({
     setSelectedId(persona.id)
     setName(persona.name)
     setPrompt(persona.prompt)
+    setVoiceType(
+      persona.voice_type === defaultVoiceValue ? '' : persona.voice_type ?? '',
+    )
+    setVoicePrompt(persona.voice_prompt ?? '')
     setError(null)
   }
 
@@ -81,6 +130,47 @@ export default function PersonaDialog({
     }
   }
 
+  async function beautifyVoice() {
+    const roleText = prompt.trim()
+    if (!roleText) {
+      setError('请先填写角色提示词，再生成音色描述')
+      return
+    }
+    setBeautifyingVoice(true)
+    setError(null)
+    try {
+      const result = await onBeautifyVoice(roleText, voicePrompt.trim())
+      if (result) {
+        setVoicePrompt(result.slice(0, 500))
+      } else {
+        setError('音色描述生成失败，请稍后重试')
+      }
+    } finally {
+      setBeautifyingVoice(false)
+    }
+  }
+
+  async function createVoice() {
+    const text = voicePrompt.trim()
+    if (!text) {
+      setError('请先填写或生成音色提示词')
+      return
+    }
+    setDesigning(true)
+    setError(null)
+    try {
+      const result = await onDesignVoice(name.trim() || '自定义音色', text)
+      if (!result) {
+        setError('自定义音色生成失败，请稍后重试')
+        return
+      }
+      setVoiceType(result.voice.value)
+      playBase64Audio(result.preview_audio, result.preview_format)
+    } finally {
+      setDesigning(false)
+    }
+  }
+
   function apply() {
     const finalName = name.trim()
     const finalPrompt = prompt.trim()
@@ -92,7 +182,13 @@ export default function PersonaDialog({
       setError('请填写角色提示词')
       return
     }
-    onApply(finalName, finalPrompt, selectedId)
+    onApply(
+      finalName,
+      finalPrompt,
+      selectedId,
+      voiceType || null,
+      voicePrompt.trim() || null,
+    )
   }
 
   return (
@@ -101,7 +197,7 @@ export default function PersonaDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-full w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -151,7 +247,7 @@ export default function PersonaDialog({
           />
         </div>
 
-        <div className="mt-4 flex min-h-0 flex-1 flex-col">
+        <div className="mt-4">
           <div className="mb-1 flex items-center justify-between gap-3">
             <label className="block text-sm font-medium text-slate-700">角色提示词</label>
             <button
@@ -165,15 +261,59 @@ export default function PersonaDialog({
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            rows={10}
+            rows={6}
             maxLength={4000}
             placeholder="例如：你是一名有十年经验的后端工程师，回答要严谨，先给结论，再给代码和边界条件。"
-            className="min-h-48 w-full flex-1 resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
+            className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
           />
           <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
             <span>美化会调用大模型，结果可以继续手动修改。</span>
             <span>{prompt.length}/4000</span>
           </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block text-sm font-medium text-slate-700">音色</label>
+              <select
+                value={voiceType}
+                onChange={(e) => setVoiceType(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500"
+              >
+                <option value="">
+                  默认音色（{defaultVoice?.label ?? 'Cherry'}）
+                </option>
+                {voices.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}（自定义）
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={beautifyVoice}
+              disabled={beautifyingVoice || designing || saving || !prompt.trim()}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {beautifyingVoice ? '生成中…' : '根据角色生成音色描述'}
+            </button>
+          </div>
+
+          <label className="mb-1 mt-3 block text-sm font-medium text-slate-700">
+            音色提示词
+          </label>
+          <textarea
+            value={voicePrompt}
+            onChange={(e) => setVoicePrompt(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="例如：女性，语速中等偏快，音色清亮，语气温和但有力量。"
+            className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            音色提示词最多 500 字；点底部「生成自定义音色」后会自动试听并选中。
+          </p>
         </div>
 
         {error && (
@@ -182,8 +322,8 @@ export default function PersonaDialog({
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="sticky bottom-0 z-10 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white pt-4">
+          <div className="flex flex-wrap items-center gap-2">
             {selectedPersona && (
               <button
                 onClick={() => onDelete(selectedPersona)}
@@ -193,6 +333,13 @@ export default function PersonaDialog({
                 删除该角色
               </button>
             )}
+            <button
+              onClick={createVoice}
+              disabled={designing || saving || !voicePrompt.trim()}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {designing ? '生成音色中…' : '生成自定义音色'}
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -204,7 +351,7 @@ export default function PersonaDialog({
             </button>
             <button
               onClick={apply}
-              disabled={saving || beautifying}
+              disabled={saving || beautifying || beautifyingVoice || designing}
               className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? '保存中…' : '保存并应用'}

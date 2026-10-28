@@ -22,6 +22,7 @@ from app.routers import conversations as conversations_router
 from app.routers import models as models_router
 from app.routers import personas as personas_router
 from app.routers import system as system_router
+from app.routers import voice as voice_router
 
 APP_VERSION = "0.1.0"
 
@@ -123,6 +124,7 @@ app.include_router(chat_router.router)
 app.include_router(admin_router.router)
 app.include_router(personas_router.router)
 app.include_router(system_router.router)
+app.include_router(voice_router.router)
 
 
 @app.get("/health", tags=["system"], summary="健康检查")

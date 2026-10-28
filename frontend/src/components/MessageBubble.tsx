@@ -1,24 +1,37 @@
 import { useState } from 'react'
 import type { ChatMessage } from '../types'
-import { speakText, speechSupported, stopSpeaking } from '../utils/speech'
+import { speakWithServer, stopSpeaking, unlockAudio } from '../utils/speech'
 import MarkdownView from './MarkdownView'
 
-export default function MessageBubble({ message }: { message: ChatMessage }) {
+export default function MessageBubble({
+  message,
+  voiceType,
+}: {
+  message: ChatMessage
+  voiceType?: string | null
+}) {
   const isUser = message.role === 'user'
   const streaming = message.status === 'streaming'
   const [speaking, setSpeaking] = useState(false)
+  const [speakError, setSpeakError] = useState<string | null>(null)
 
-  const canSpeak =
-    !isUser && !streaming && !!message.content && speechSupported()
+  const canSpeak = !isUser && !streaming && !!message.content
 
-  function toggleSpeak() {
+  async function toggleSpeak() {
     if (speaking) {
       stopSpeaking()
       setSpeaking(false)
       return
     }
-    if (speakText(message.content, () => setSpeaking(false))) {
-      setSpeaking(true)
+    unlockAudio()
+    setSpeakError(null)
+    setSpeaking(true)
+    const started = await speakWithServer(message.content, voiceType, () =>
+      setSpeaking(false),
+    )
+    if (!started) {
+      setSpeaking(false)
+      setSpeakError('朗读失败，请检查语音服务或浏览器音量')
     }
   }
 
@@ -66,6 +79,9 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
                 >
                   {speaking ? '停止朗读' : '朗读'}
                 </button>
+                {speakError && (
+                  <div className="mt-1 text-xs text-red-500">{speakError}</div>
+                )}
               </div>
             )}
           </>

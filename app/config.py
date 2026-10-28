@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ""
     bailian_api_key: str = ""
 
+
     # 跨域
     cors_origins: str = "http://localhost:5173"
 
@@ -52,6 +53,14 @@ class Settings(BaseSettings):
     default_system_prompt: str = ""
     # 提示词美化使用的模型
     persona_model_id: str = "deepseek-chat"
+    # 语音：使用阿里云百炼 Qwen3-TTS / Qwen3-ASR
+    bailian_tts_model: str = "qwen3-tts-flash"
+    bailian_asr_model: str = "qwen3-asr-flash"
+    # 声音设计生成的自定义音色绑定的合成模型
+    bailian_design_tts_model: str = "qwen-audio-3.1-tts-flash"
+    # 默认音色；用户未选择时使用
+    default_voice_type: str = "Cherry"
+    max_tts_chars: int = 1200
     upstream_connect_timeout: float = 10.0
     upstream_total_timeout: float = 120.0
 

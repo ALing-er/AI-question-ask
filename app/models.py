@@ -58,6 +58,10 @@ class Persona(Base):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(String(255))
+    # 音色：百炼 TTS 的 voice 参数；为空时使用默认音色
+    voice_type: Mapped[str | None] = mapped_column(String(128))
+    # 音色描述提示词，用于记录期望的音色特征
+    voice_prompt: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=now_utc, nullable=False
     )
@@ -67,6 +71,32 @@ class Persona(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     __table_args__ = (Index("ix_personas_user_updated", "user_id", "updated_at"),)
+
+
+class CustomVoice(Base):
+    """用户通过百炼声音设计生成的自定义音色。"""
+
+    __tablename__ = "custom_voices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    voice_id: Mapped[str] = mapped_column(
+        String(128), unique=True, index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    target_model: Mapped[str] = mapped_column(String(64), nullable=False)
+    preview_text: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=now_utc, nullable=False
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+    __table_args__ = (
+        Index("ix_custom_voices_user_created", "user_id", "created_at"),
+    )
 
 
 class Conversation(Base):
@@ -81,6 +111,9 @@ class Conversation(Base):
     model_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # 会话级系统提示词 / 人设；为空时使用全局默认值
     system_prompt: Mapped[str | None] = mapped_column(Text)
+    # 会话级音色与音色描述
+    voice_type: Mapped[str | None] = mapped_column(String(128))
+    voice_prompt: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=now_utc, nullable=False
     )

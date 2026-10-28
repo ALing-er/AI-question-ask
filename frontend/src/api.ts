@@ -7,6 +7,9 @@ import type {
   ModelInfo,
   Persona,
   SystemConfig,
+  VoiceDesignResponse,
+  VoiceList,
+  VoiceOption,
   TokenResponse,
   UserInfo,
 } from './types'
@@ -115,7 +118,13 @@ export const createConversation = (modelId?: string) =>
 
 export const updateConversation = (
   id: number,
-  patch: { title?: string; model_id?: string; system_prompt?: string | null },
+  patch: {
+    title?: string
+    model_id?: string
+    system_prompt?: string | null
+    voice_type?: string | null
+    voice_prompt?: string | null
+  },
 ) =>
   request<Conversation>(`/api/conversations/${id}`, {
     method: 'PATCH',
@@ -160,6 +169,8 @@ export const createPersona = (data: {
   name: string
   prompt: string
   description?: string | null
+  voice_type?: string | null
+  voice_prompt?: string | null
 }) =>
   request<Persona>('/api/personas', {
     method: 'POST',
@@ -168,7 +179,13 @@ export const createPersona = (data: {
 
 export const updatePersona = (
   id: number,
-  data: { name?: string; prompt?: string; description?: string | null },
+  data: {
+    name?: string
+    prompt?: string
+    description?: string | null
+    voice_type?: string | null
+    voice_prompt?: string | null
+  },
 ) =>
   request<Persona>(`/api/personas/${id}`, {
     method: 'PATCH',
@@ -183,6 +200,90 @@ export const beautifyPersonaPrompt = (prompt: string) =>
     method: 'POST',
     body: JSON.stringify({ prompt }),
   })
+
+export const beautifyVoicePrompt = (rolePrompt: string, currentPrompt?: string) =>
+  request<{ prompt: string }>('/api/personas/voice-prompt', {
+    method: 'POST',
+    body: JSON.stringify({
+      role_prompt: rolePrompt,
+      current_prompt: currentPrompt || null,
+    }),
+  })
+
+// ---------------- 语音 ----------------
+
+export const listVoices = () => request<VoiceList>('/api/voice/voices')
+
+export const designVoice = (data: {
+  name: string
+  prompt: string
+  preview_text?: string
+}) =>
+  request<VoiceDesignResponse>('/api/voice/design', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export async function synthesizeSpeech(
+  text: string,
+  voiceType?: string | null,
+): Promise<Blob> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch('/api/voice/tts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ text, voice_type: voiceType || null }),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    let err: Record<string, unknown> = {}
+    try {
+      err = JSON.parse(body)?.error ?? {}
+    } catch {
+      /* 忽略 */
+    }
+    throw new ApiError(
+      (err.message as string) ?? '语音合成失败',
+      (err.code as string) ?? 'UNKNOWN',
+      res.status,
+      err.request_id as string | undefined,
+    )
+  }
+  return res.blob()
+}
+
+export async function transcribeVoice(file: Blob): Promise<{ text: string }> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const form = new FormData()
+  form.append('file', file, 'voice.wav')
+
+  const res = await fetch('/api/voice/asr', {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    let err: Record<string, unknown> = {}
+    try {
+      err = JSON.parse(body)?.error ?? {}
+    } catch {
+      /* 忽略 */
+    }
+    throw new ApiError(
+      (err.message as string) ?? '语音识别失败',
+      (err.code as string) ?? 'UNKNOWN',
+      res.status,
+      err.request_id as string | undefined,
+    )
+  }
+  return res.json()
+}
 
 // ---------------- 管理后台 ----------------
 

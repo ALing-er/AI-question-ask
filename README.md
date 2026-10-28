@@ -1,6 +1,6 @@
 # AI 问答平台
 
-多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台、角色设定、语音输入与朗读。
+多用户 AI 对话平台：注册登录、多模型切换、流式输出、会话历史、用户隔离、管理员后台、角色设定、自定义音色、百炼语音输入与朗读。
 
 ## 技术栈
 
@@ -28,7 +28,8 @@ ai-qa/
 │   │   ├── bootstrap.py     种子管理员
 │   │   ├── audit.py         审计日志写入
 │   │   ├── providers/       模型适配层
-│   │   └── routers/         auth / conversations / models / chat / admin / personas / system
+│   │   ├── services/        voice.py（百炼 TTS / ASR）
+│   │   └── routers/         auth / conversations / models / chat / admin / personas / system / voice
 │   ├── config/models.yaml   模型清单（加模型只改这里）
 │   ├── data/app.db          SQLite
 │   ├── logs/app.log
@@ -135,6 +136,14 @@ providers:
 
 **为什么需要跨供应商**：同一家厂商限流时，它旗下的其他模型通常也一起限流，用自己兜底没有意义。
 
+## 语音
+
+- 语音输入：Composer 录音 → `/api/voice/asr`（百炼 `qwen3-asr-flash`）
+- 语音输出：消息「朗读」/ 自动朗读 → `/api/voice/tts`
+- 默认音色只保留 Cherry；角色设定里可用音色提示词生成自定义音色
+- 自定义音色走百炼声音设计，绑定 `qwen-audio-3.1-tts-flash`，创建免费、合成按量计费
+- 依赖 `BAILIAN_API_KEY`；模型可用 `BAILIAN_TTS_MODEL` / `BAILIAN_ASR_MODEL` / `BAILIAN_DESIGN_TTS_MODEL` 调整
+
 ## 验收记录
 
 测试与验收结果保留在 [`docs/需求分析.md`](docs/需求分析.md) 中；对应的一次性测试脚本已移除。
@@ -158,6 +167,11 @@ providers:
 | GET/POST | `/api/personas` | 我的角色 / 创建角色 |
 | PATCH/DELETE | `/api/personas/{id}` | 更新 / 删除角色 |
 | POST | `/api/personas/beautify` | 大模型美化角色提示词 |
+| POST | `/api/personas/voice-prompt` | 根据角色生成/美化音色描述 |
+| GET | `/api/voice/voices` | 默认音色 + 我的自定义音色 |
+| POST | `/api/voice/design` | 用提示词生成自定义音色并试听 |
+| POST | `/api/voice/tts` | 文本转语音（WAV） |
+| POST | `/api/voice/asr` | 上传音频识别文字 |
 | GET | `/api/admin/users` | 用户列表（管理员） |
 | PATCH | `/api/admin/users/{id}` | 启用 / 禁用（管理员） |
 | POST | `/api/admin/users/{id}/reset-password` | 重置密码（管理员） |

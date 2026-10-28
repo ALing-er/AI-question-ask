@@ -76,6 +76,8 @@ async def create_conversation(
         title=payload.title or "新会话",
         model_id=model_id,
         system_prompt=(payload.system_prompt or "").strip() or None,
+        voice_type=payload.voice_type or None,
+        voice_prompt=(payload.voice_prompt or "").strip() or None,
     )
     session.add(conversation)
     await session.commit()
@@ -103,6 +105,8 @@ async def update_conversation(
         payload.title is None
         and payload.model_id is None
         and payload.system_prompt is None
+        and payload.voice_type is None
+        and payload.voice_prompt is None
     ):
         raise AppError("SYS_VALIDATION", "没有需要更新的字段")
 
@@ -116,6 +120,10 @@ async def update_conversation(
         conversation.model_id = payload.model_id
     if payload.system_prompt is not None:
         conversation.system_prompt = payload.system_prompt.strip() or None
+    if payload.voice_type is not None:
+        conversation.voice_type = payload.voice_type.strip() or None
+    if payload.voice_prompt is not None:
+        conversation.voice_prompt = payload.voice_prompt.strip() or None
 
     await session.commit()
     await session.refresh(conversation)

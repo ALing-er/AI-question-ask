@@ -122,11 +122,41 @@ def _migrate_sqlite(sync_conn) -> None:
         cols = columns_of("conversations")
         if "system_prompt" not in cols:
             sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN system_prompt TEXT"))
+        if "voice_type" not in cols:
+            sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN voice_type VARCHAR(128)"))
+        if "voice_prompt" not in cols:
+            sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN voice_prompt TEXT"))
+
+    if "personas" in tables:
+        cols = columns_of("personas")
+        if "voice_type" not in cols:
+            sync_conn.execute(text("ALTER TABLE personas ADD COLUMN voice_type VARCHAR(128)"))
+        if "voice_prompt" not in cols:
+            sync_conn.execute(text("ALTER TABLE personas ADD COLUMN voice_prompt TEXT"))
 
     if "messages" in tables:
         cols = columns_of("messages")
         if "reasoning" not in cols:
             sync_conn.execute(text("ALTER TABLE messages ADD COLUMN reasoning TEXT"))
+
+    # 旧的系统音色只保留默认音色；其余值若不是自定义音色则清空
+    if "custom_voices" in tables:
+        cleanup_sql = (
+            "UPDATE {table} SET voice_type = NULL "
+            "WHERE voice_type IS NOT NULL "
+            "AND voice_type != :default_voice "
+            "AND voice_type NOT IN (SELECT voice_id FROM custom_voices)"
+        )
+        if "conversations" in tables:
+            sync_conn.execute(
+                text(cleanup_sql.format(table="conversations")),
+                {"default_voice": settings.default_voice_type},
+            )
+        if "personas" in tables:
+            sync_conn.execute(
+                text(cleanup_sql.format(table="personas")),
+                {"default_voice": settings.default_voice_type},
+            )
 
 
 async def init_db() -> None:

@@ -6,8 +6,15 @@ import MessageBubble from '../components/MessageBubble'
 import ModelSelect from '../components/ModelSelect'
 import PersonaDialog from '../components/PersonaDialog'
 import { useAuth } from '../store/auth'
-import type { ChatMessage, Conversation, ModelInfo, Persona } from '../types'
-import { speakText, stopSpeaking } from '../utils/speech'
+import type {
+  ChatMessage,
+  Conversation,
+  ModelInfo,
+  Persona,
+  VoiceDesignResponse,
+  VoiceOption,
+} from '../types'
+import { speakWithServer, stopSpeaking, unlockAudio } from '../utils/speech'
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : '操作失败')
 
@@ -27,6 +34,8 @@ export default function ChatPage() {
   const [query, setQuery] = useState('')
   const [maxChars, setMaxChars] = useState(8000)
   const [personas, setPersonas] = useState<Persona[]>([])
+  const [defaultVoice, setDefaultVoice] = useState<VoiceOption | null>(null)
+  const [voices, setVoices] = useState<VoiceOption[]>([])
   const [personaOpen, setPersonaOpen] = useState(false)
   const [savingPersona, setSavingPersona] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -45,17 +54,23 @@ export default function ChatPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const [m, cs, cfg, ps] = await Promise.all([
+        const [m, cs, cfg, ps, vs] = await Promise.all([
           api.listModels(),
           api.listConversations(),
           api.getSystemConfig(),
           api.listPersonas().catch(() => [] as Persona[]),
+          api.listVoices().catch(() => ({
+            default_voice: null as unknown as VoiceOption,
+            voices: [] as VoiceOption[],
+          })),
         ])
         if (cancelled) return
         setModels(m.models)
         setConversations(cs)
         setMaxChars(cfg.max_message_chars || 8000)
         setPersonas(ps)
+        setDefaultVoice(vs.default_voice ?? null)
+        setVoices(vs.voices)
 
         if (cs.length > 0) {
           setActiveId(cs[0].id)
@@ -195,10 +210,42 @@ export default function ChatPage() {
     }
   }
 
+  async function designVoice(
+    name: string,
+    prompt: string,
+  ): Promise<VoiceDesignResponse | null> {
+    try {
+      const res = await api.designVoice({ name, prompt })
+      setVoices((prev) => [
+        res.voice,
+        ...prev.filter((v) => v.value !== res.voice.value),
+      ])
+      return res
+    } catch (e) {
+      setError(errText(e))
+      return null
+    }
+  }
+
+  async function beautifyVoicePrompt(
+    rolePrompt: string,
+    currentPrompt: string,
+  ): Promise<string | null> {
+    try {
+      const res = await api.beautifyVoicePrompt(rolePrompt, currentPrompt)
+      return res.prompt
+    } catch (e) {
+      setError(errText(e))
+      return null
+    }
+  }
+
   async function applyPersona(
     name: string,
     prompt: string,
     personaId: number | null,
+    voiceType: string | null,
+    voicePrompt: string | null,
   ) {
     setSavingPersona(true)
     setError(null)
@@ -216,10 +263,22 @@ export default function ChatPage() {
       }
 
       const saved = personaId
-        ? await api.updatePersona(personaId, { name, prompt })
-        : await api.createPersona({ name, prompt })
+        ? await api.updatePersona(personaId, {
+            name,
+            prompt,
+            voice_type: voiceType,
+            voice_prompt: voicePrompt,
+          })
+        : await api.createPersona({
+            name,
+            prompt,
+            voice_type: voiceType,
+            voice_prompt: voicePrompt,
+          })
       const updated = await api.updateConversation(convId, {
         system_prompt: saved.prompt,
+        voice_type: saved.voice_type,
+        voice_prompt: saved.voice_prompt,
       })
       setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
       setPersonas((prev) => {
@@ -281,6 +340,7 @@ export default function ChatPage() {
     if (!text || streaming) return
 
     stopSpeaking()
+    unlockAudio()
     setError(null)
     setInput('')
 
@@ -363,7 +423,13 @@ export default function ChatPage() {
             setMessages((prev) =>
               prev.map((m) => (m.id === tempAssistantId ? { ...m, status: 'done' } : m)),
             )
-            if (autoRead && answerText) speakText(answerText)
+            if (autoRead && answerText) {
+              void speakWithServer(answerText, activeConv?.voice_type ?? null).then(
+                (ok) => {
+                  if (!ok) setError('自动朗读失败，请检查语音服务或浏览器音量')
+                },
+              )
+            }
           },
           onError: (err) => {
             setError(`${err.message}（${err.code}）`)
@@ -446,6 +512,7 @@ export default function ChatPage() {
             </button>
             <button
               onClick={() => {
+                unlockAudio()
                 if (autoRead) stopSpeaking()
                 setAutoRead((v) => !v)
               }}
@@ -475,7 +542,11 @@ export default function ChatPage() {
             </div>
           )}
           {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+            <MessageBubble
+              key={m.id}
+              message={m}
+              voiceType={activeConv?.voice_type ?? null}
+            />
           ))}
           <div ref={bottomRef} />
         </div>
@@ -500,10 +571,16 @@ export default function ChatPage() {
       <PersonaDialog
         open={personaOpen}
         initialPrompt={activeConv?.system_prompt ?? null}
+        initialVoiceType={activeConv?.voice_type ?? null}
+        initialVoicePrompt={activeConv?.voice_prompt ?? null}
         personas={personas}
+        defaultVoice={defaultVoice}
+        voices={voices}
         saving={savingPersona}
         onClose={() => setPersonaOpen(false)}
         onBeautify={beautifyPrompt}
+        onBeautifyVoice={beautifyVoicePrompt}
+        onDesignVoice={designVoice}
         onApply={applyPersona}
         onDelete={removePersona}
       />

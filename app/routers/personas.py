@@ -23,6 +23,8 @@ from app.schemas import (
     PersonaCreate,
     PersonaOut,
     PersonaUpdate,
+    VoicePromptRequest,
+    VoicePromptResponse,
 )
 
 router = APIRouter(prefix="/api/personas", tags=["personas"])
@@ -35,6 +37,14 @@ BEAUTIFY_SYSTEM_PROMPT = """你是一个角色设定提示词优化助手。
 2. 结构清晰，包含角色身份、性格、说话风格、回答规则、边界；
 3. 语言简洁，200-400 字；
 4. 只输出改写后的提示词正文，不要解释、不要加代码块、不要加标题。"""
+
+VOICE_PROMPT_SYSTEM_PROMPT = """你是一个音色设定助手。
+请根据角色设定，写一段用于语音合成的音色描述。
+要求：
+1. 包含性别、年龄感、音色质感、语速、语调、情绪风格；
+2. 与角色性格一致；
+3. 50-120 字；
+4. 只输出音色描述正文，不要解释、不要加代码块、不要加标题。"""
 
 
 def _clean_prompt(text: str) -> str:
@@ -49,7 +59,7 @@ def _clean_prompt(text: str) -> str:
     return text[:4000]
 
 
-async def _beautify(prompt: str) -> str:
+async def _generate(system_prompt: str, user_prompt: str) -> str:
     settings = get_settings()
     chain = registry.fallback_chain(settings.persona_model_id)
     last_error: AppError | None = None
@@ -61,8 +71,8 @@ async def _beautify(prompt: str) -> str:
             agen = resolved.provider_impl.stream_chat(
                 model_id=candidate,
                 messages=[
-                    {"role": "system", "content": BEAUTIFY_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 api_key=resolved.api_key,
                 options={"temperature": 0.7},
@@ -153,6 +163,8 @@ async def create_persona(
         name=name,
         prompt=prompt,
         description=(payload.description or "").strip() or None,
+        voice_type=(payload.voice_type or "").strip() or None,
+        voice_prompt=(payload.voice_prompt or "").strip() or None,
     )
     session.add(persona)
     await session.commit()
@@ -175,6 +187,8 @@ async def update_persona(
         payload.name is None
         and payload.prompt is None
         and payload.description is None
+        and payload.voice_type is None
+        and payload.voice_prompt is None
     ):
         raise AppError("SYS_VALIDATION", "没有需要更新的字段")
 
@@ -192,6 +206,10 @@ async def update_persona(
         persona.prompt = prompt
     if payload.description is not None:
         persona.description = payload.description.strip() or None
+    if payload.voice_type is not None:
+        persona.voice_type = payload.voice_type.strip() or None
+    if payload.voice_prompt is not None:
+        persona.voice_prompt = payload.voice_prompt.strip() or None
 
     await session.commit()
     await session.refresh(persona)
@@ -231,4 +249,28 @@ async def beautify_prompt(
     prompt = payload.prompt.strip()
     if not prompt:
         raise AppError("SYS_VALIDATION", "提示词不能为空")
-    return BeautifyPromptResponse(prompt=await _beautify(prompt))
+    return BeautifyPromptResponse(
+        prompt=await _generate(BEAUTIFY_SYSTEM_PROMPT, prompt)
+    )
+
+
+@router.post(
+    "/voice-prompt",
+    response_model=VoicePromptResponse,
+    summary="根据角色生成音色描述",
+)
+async def generate_voice_prompt(
+    payload: VoicePromptRequest,
+    user: CurrentUser,
+) -> VoicePromptResponse:
+    role_prompt = payload.role_prompt.strip()
+    if not role_prompt:
+        raise AppError("SYS_VALIDATION", "角色提示词不能为空")
+    current = (payload.current_prompt or "").strip()
+    user_content = (
+        f"角色设定：\n{role_prompt}\n\n"
+        f"已有音色描述：\n{current or '无'}\n\n"
+        "请生成或优化一段音色描述。"
+    )
+    result = await _generate(VOICE_PROMPT_SYSTEM_PROMPT, user_content)
+    return VoicePromptResponse(prompt=result[:2000])

@@ -13,6 +13,8 @@ export interface Conversation {
   title: string
   model_id: string
   system_prompt: string | null
+  voice_type: string | null
+  voice_prompt: string | null
   created_at: string
   updated_at: string
 }
@@ -51,8 +53,30 @@ export interface Persona {
   name: string
   prompt: string
   description: string | null
+  voice_type: string | null
+  voice_prompt: string | null
   created_at: string
   updated_at: string
+}
+
+export interface VoiceOption {
+  id?: number
+  value: string
+  label: string
+  gender: string
+  description: string
+  kind: 'system' | 'custom'
+}
+
+export interface VoiceList {
+  default_voice: VoiceOption
+  voices: VoiceOption[]
+}
+
+export interface VoiceDesignResponse {
+  voice: VoiceOption
+  preview_audio: string
+  preview_format: string
 }
 
 export interface SystemConfig {

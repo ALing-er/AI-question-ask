@@ -51,6 +51,15 @@ ERROR_CATALOG: dict[str, tuple[int, str]] = {
     "MODEL_RATE_LIMITED": (429, "模型调用过于频繁，请稍后再试"),
     "MODEL_TIMEOUT": (504, "模型响应超时"),
     "MODEL_UPSTREAM_ERROR": (502, "模型服务异常"),
+    # 语音
+    "VOICE_KEY_MISSING": (500, "语音服务未配置 API Key"),
+    "VOICE_KEY_INVALID": (502, "语音服务密钥无效"),
+    "VOICE_NOT_FOUND": (404, "音色不存在或已删除"),
+    "VOICE_DESIGN_FAILED": (502, "自定义音色生成失败"),
+    "VOICE_TTS_FAILED": (502, "语音合成失败"),
+    "VOICE_ASR_FAILED": (502, "语音识别失败"),
+    "VOICE_AUDIO_TOO_LARGE": (413, "音频文件不能超过 10MB"),
+    "VOICE_RATE_LIMITED": (429, "语音服务调用过于频繁"),
     # 系统
     "SYS_VALIDATION": (422, "请求参数有误"),
     "SYS_NOT_FOUND": (404, "接口不存在"),
