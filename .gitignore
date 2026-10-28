@@ -1,0 +1,17 @@
+# ---------- Python ----------
+.venv/
+__pycache__/
+*.pyc
+logs/
+data/
+.env
+
+# ---------- 前端 ----------
+frontend/node_modules/
+frontend/dist/
+frontend/e2e-shots/
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+.codeartsdoer/

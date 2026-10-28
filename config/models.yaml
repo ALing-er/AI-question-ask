@@ -1,0 +1,65 @@
+﻿# 模型配置：新增模型只改这个文件，不用动代码
+#
+# 字段说明：
+#   id           调用时传的 model 名（messages.model_id 存的就是它）
+#   name         前端下拉框显示的名字
+#   api_key_env  从哪个环境变量读 key（对应 .env 里的名字）
+#   enabled      provider 级别开关，false 时整个 provider 不出现在 /api/models
+#   fallback     主模型失败（连不上/超时/限流/密钥无效）时自动切换的模型，
+#                可以写一个，也可以写成列表；支持跨供应商
+
+providers:
+  # ---------------- 火山方舟（豆包） ----------------
+  # key 有效，但账号下模型都还没「开通」，调用返回 ModelNotOpen。
+  # 开通方法：控制台 → 方舟 → 模型广场 → 找到模型 → 点「开通」（有免费额度）。
+  # 开通后把 enabled 改成 true 即可。
+  - id: ark
+    name: 火山方舟
+    enabled: false
+    base_url: https://ark.cn-beijing.volces.com/api/v3
+    api_key_env: ARK_API_KEY
+    models:
+      - id: doubao-seed-2-1-pro-260915
+        name: 豆包 Seed 2.1 Pro
+      - id: doubao-seed-2-1-turbo-260628
+        name: 豆包 Seed 2.1 Turbo
+
+  # ---------------- DeepSeek ----------------
+  - id: deepseek
+    name: DeepSeek
+    enabled: true
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    # DeepSeek 支持在流式响应里返回 token 用量
+    stream_options:
+      include_usage: true
+    models:
+      - id: deepseek-chat
+        name: DeepSeek Chat
+        fallback: qwen3.8-max
+      - id: deepseek-reasoner
+        name: DeepSeek Reasoner
+        fallback: deepseek-v4-pro-0813
+
+  # ---------------- 阿里云百炼 ----------------
+  # 兼容 OpenAI 协议，模型目录按工作空间授权。
+  # 下面几个是实测能调通的；账号里其他模型会报
+  # 「Free quota exhausted」或「The product is not activated」。
+  - id: bailian
+    name: 阿里云百炼
+    enabled: true
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key_env: BAILIAN_API_KEY
+    models:
+      - id: qwen3.8-max
+        name: 通义千问 3.8 Max
+        fallback: deepseek-chat
+      - id: qwen3.8-flash
+        name: 通义千问 3.8 Flash
+        fallback: deepseek-chat
+      - id: deepseek-v4-pro-0813
+        name: DeepSeek V4 Pro（百炼）
+        fallback: deepseek-chat
+      - id: kimi-k3
+        name: Kimi K3
+        fallback: deepseek-chat
