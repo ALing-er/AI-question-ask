@@ -47,10 +47,15 @@ class Settings(BaseSettings):
 
     # 对话
     max_context_turns: int = 10
-    max_context_chars: int = 24000
+    # 上下文预算按估算 token 计，避免字符预算与上游窗口不对应
+    max_context_tokens: int = 32000
     max_message_chars: int = 8000
     default_model_id: str = "qwen3.8-flash"
     default_system_prompt: str = ""
+    # 历史摘要：未被摘要的消息超过阈值时，压缩较早部分，只保留最近若干条原文
+    summary_trigger_tokens: int = 12000
+    summary_keep_messages: int = 8
+    summary_model_id: str = "deepseek-chat"
     # 提示词美化使用的模型
     persona_model_id: str = "deepseek-chat"
     # 语音：使用阿里云百炼 Qwen3-TTS / Qwen3-ASR

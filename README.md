@@ -19,6 +19,7 @@ ai-qa/
 │   ├── schemas.py           请求与响应模型
 │   ├── core/                基础设施
 │   │   ├── config.py        配置（读 .env）
+│   │   ├── tokens.py        上下文 token 估算
 │   │   ├── security.py      bcrypt + JWT
 │   │   ├── deps.py          鉴权 / 管理员 / 会话归属
 │   │   ├── errors.py        统一错误码与异常处理

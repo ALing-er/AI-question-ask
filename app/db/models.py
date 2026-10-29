@@ -114,6 +114,9 @@ class Conversation(Base):
     # 会话级音色与音色描述
     voice_type: Mapped[str | None] = mapped_column(String(128))
     voice_prompt: Mapped[str | None] = mapped_column(Text)
+    # 早期对话的滚动摘要；summary_until_id 表示已被摘要到的消息 id
+    summary: Mapped[str | None] = mapped_column(Text)
+    summary_until_id: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=now_utc, nullable=False
     )

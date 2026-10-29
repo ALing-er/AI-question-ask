@@ -126,6 +126,12 @@ def _migrate_sqlite(sync_conn) -> None:
             sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN voice_type VARCHAR(128)"))
         if "voice_prompt" not in cols:
             sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN voice_prompt TEXT"))
+        if "summary" not in cols:
+            sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN summary TEXT"))
+        if "summary_until_id" not in cols:
+            sync_conn.execute(
+                text("ALTER TABLE conversations ADD COLUMN summary_until_id INTEGER NOT NULL DEFAULT 0")
+            )
 
     if "personas" in tables:
         cols = columns_of("personas")

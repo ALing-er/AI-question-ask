@@ -16,13 +16,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.deps import CurrentUser
 from app.core.errors import AppError
 from app.core.logging_setup import get_logger
+from app.core.tokens import estimate_tokens
 from app.db import AsyncSessionLocal, get_session
 from app.db.models import Conversation, Message
 from app.providers import registry
@@ -45,31 +46,52 @@ def sse(event: str, data: dict) -> str:
 
 async def _build_context(
     session: AsyncSession,
-    conversation_id: int,
+    conversation: Conversation,
     max_turns: int,
-    max_chars: int,
-    system_prompt: str | None,
-) -> list[dict]:
-    """取最近 N 轮对话，并受字符预算约束。
+    max_tokens: int,
+) -> tuple[list[dict], int, int]:
+    """组装上下文：系统提示词（含历史摘要）+ 最近 N 轮，按估算 token 裁剪。
 
     从最新消息往前累加，至少保留最新一条用户消息；
-    这样即使历史很长，也不会把当前问题挤掉。
+    已被摘要的消息不再重复发送，只通过摘要承接。
+    返回 (context, 估算 tokens, 已压缩消息条数)。
     """
+    settings = get_settings()
+    system_prompt = (
+        conversation.system_prompt or settings.default_system_prompt or ""
+    ).strip()
+    summary = (conversation.summary or "").strip()
+    until = conversation.summary_until_id or 0
+    if summary:
+        block = f"【此前对话摘要】\n{summary}"
+        system_prompt = f"{system_prompt}\n\n{block}" if system_prompt else block
+
+    context: list[dict] = []
+    if system_prompt:
+        context.append({"role": "system", "content": system_prompt})
+
+    summarized = 0
+    if summary:
+        summarized = await session.scalar(
+            select(func.count(Message.id)).where(
+                Message.conversation_id == conversation.id,
+                Message.id <= until,
+            )
+        ) or 0
+
+    used = estimate_tokens(system_prompt)
     limit = max_turns * 2
     stmt = (
         select(Message)
-        .where(Message.conversation_id == conversation_id)
+        .where(
+            Message.conversation_id == conversation.id,
+            Message.id > until,
+        )
         .order_by(Message.id.desc())
         .limit(limit)
     )
     rows = (await session.scalars(stmt)).all()
 
-    context: list[dict] = []
-    prompt = (system_prompt or "").strip()
-    if prompt:
-        context.append({"role": "system", "content": prompt})
-
-    used = len(prompt)
     kept: list[Message] = []
     for row in rows:  # 已按 id 倒序，最新在前
         if row.role not in ("user", "assistant"):
@@ -77,14 +99,15 @@ async def _build_context(
         # 空内容（比如上一次失败的占位消息）不要塞进上下文
         if not row.content.strip():
             continue
-        if kept and used + len(row.content) > max_chars:
+        cost = estimate_tokens(row.content)
+        if kept and used + cost > max_tokens:
             break
         kept.append(row)
-        used += len(row.content)
+        used += cost
 
     kept.reverse()
     context.extend({"role": row.role, "content": row.content} for row in kept)
-    return context
+    return context, used, summarized
 
 
 @router.post("/stream", summary="流式对话（SSE）")
@@ -134,13 +157,11 @@ async def chat_stream(
     conversation.updated_at = datetime.now(timezone.utc)
     await session.commit()
 
-    system_prompt = (conversation.system_prompt or settings.default_system_prompt or "").strip()
-    context = await _build_context(
+    context, context_tokens, summarized_messages = await _build_context(
         session,
-        conversation.id,
+        conversation,
         settings.max_context_turns,
-        settings.max_context_chars,
-        system_prompt,
+        settings.max_context_tokens,
     )
 
     logger.info(
@@ -150,6 +171,8 @@ async def chat_stream(
             "conversation_id": conversation.id,
             "model": model_id,
             "context_messages": len(context),
+            "context_tokens": context_tokens,
+            "summarized_messages": summarized_messages,
         },
     )
 
@@ -158,6 +181,8 @@ async def chat_stream(
             conversation_id=conversation.id,
             model_id=model_id,
             context=context,
+            context_tokens=context_tokens,
+            summarized_messages=summarized_messages,
             web_search=payload.web_search,
             request=request,
         ),
@@ -204,6 +229,8 @@ async def _event_stream(
     conversation_id: int,
     model_id: str,
     context: list[dict],
+    context_tokens: int,
+    summarized_messages: int,
     web_search: bool,
     request: Request,
 ) -> AsyncIterator[str]:
@@ -269,6 +296,9 @@ async def _event_stream(
             "message_id": assistant_id,
             "conversation_id": conversation_id,
             "model_id": used_model,
+            # 前端用它展示本次上下文估算用量与已压缩条数
+            "context_tokens": context_tokens,
+            "summarized_messages": summarized_messages,
         },
     )
 
@@ -365,7 +395,140 @@ async def _event_stream(
                     "usage": usage,
                 },
             )
+            # 回答结束后异步压缩旧消息，不阻塞本次响应
+            asyncio.create_task(_maybe_summarize(conversation_id))
         try:
             await agen.aclose()
         except Exception:  # noqa: BLE001
             pass
+
+
+SUMMARY_SYSTEM_PROMPT = (
+    "你是一个对话摘要助手。请把给出的对话压缩成简洁的中文摘要，"
+    "只保留：用户的目标与偏好、关键事实与结论、尚未解决的问题、重要约定。"
+    "不要编造，不要输出 Markdown 标题或代码块，控制在 500 字以内。"
+)
+SUMMARY_INPUT_CHARS = 16000
+SUMMARY_MAX_CHARS = 800
+
+# 摘要调用低频且造价不低，串行执行即可，避免同一会话被并发压缩
+_summary_lock = asyncio.Lock()
+
+
+async def _maybe_summarize(conversation_id: int) -> None:
+    """把较早的消息压成滚动摘要，最近若干条继续保留原文。
+
+    触发条件：未摘要消息的估算 token 超过 SUMMARY_TRIGGER_TOKENS。
+    一次只压缩能放下的前缀，剩余部分留给下一次，避免单次输入过大。
+    """
+    try:
+        async with _summary_lock:
+            settings = get_settings()
+            async with AsyncSessionLocal() as db:
+                conversation = await db.get(Conversation, conversation_id)
+                if conversation is None or conversation.deleted_at is not None:
+                    return
+
+                until = conversation.summary_until_id or 0
+                stmt = (
+                    select(Message)
+                    .where(
+                        Message.conversation_id == conversation_id,
+                        Message.id > until,
+                        Message.role.in_(("user", "assistant")),
+                    )
+                    .order_by(Message.id.asc())
+                )
+                rows = [
+                    row for row in (await db.scalars(stmt)).all() if row.content.strip()
+                ]
+                keep = max(2, settings.summary_keep_messages)
+                if len(rows) <= keep:
+                    return
+
+                total = sum(estimate_tokens(row.content) for row in rows)
+                if total <= settings.summary_trigger_tokens:
+                    return
+
+                pieces: list[str] = []
+                used = 0
+                last_id = until
+                for row in rows[:-keep]:
+                    label = "用户" if row.role == "user" else "助手"
+                    piece = f"{label}：{row.content.strip()}\n"
+                    remaining = SUMMARY_INPUT_CHARS - used
+                    if remaining <= 0:
+                        break
+                    if len(piece) > remaining:
+                        piece = piece[:remaining]
+                    pieces.append(piece)
+                    used += len(piece)
+                    last_id = row.id
+
+                if not pieces:
+                    return
+
+                user_prompt = (
+                    f"已有摘要：\n{conversation.summary or '（无）'}\n\n"
+                    f"新增对话：\n{''.join(pieces)}\n\n"
+                    "请输出更新后的摘要。"
+                )
+                summary = await _generate_summary(user_prompt)
+                if not summary:
+                    return
+
+                conversation.summary = summary
+                conversation.summary_until_id = last_id
+                await db.commit()
+                logger.info(
+                    "会话摘要已更新",
+                    extra={
+                        "event": "summary_updated",
+                        "conversation_id": conversation_id,
+                        "until_id": last_id,
+                        "chars": len(summary),
+                    },
+                )
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "生成会话摘要失败",
+            extra={"event": "summary_failed", "conversation_id": conversation_id},
+        )
+
+
+async def _generate_summary(user_prompt: str) -> str | None:
+    settings = get_settings()
+    chain = registry.fallback_chain(settings.summary_model_id)
+
+    for candidate in chain:
+        agen = None
+        try:
+            resolved = registry.resolve(candidate)
+            agen = resolved.provider_impl.stream_chat(
+                model_id=candidate,
+                messages=[
+                    {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                api_key=resolved.api_key,
+                options={"temperature": 0.3},
+            )
+            pieces: list[str] = []
+            async for chunk in agen:
+                if chunk.text:
+                    pieces.append(chunk.text)
+            text = "".join(pieces).strip()
+            if text:
+                return text[:SUMMARY_MAX_CHARS]
+        except AppError as exc:
+            logger.warning(
+                "摘要模型调用失败，尝试下一个",
+                extra={"event": "summary_attempt_failed", "model": candidate, "code": exc.code},
+            )
+        finally:
+            if agen is not None:
+                try:
+                    await agen.aclose()
+                except Exception:  # noqa: BLE001
+                    pass
+    return None

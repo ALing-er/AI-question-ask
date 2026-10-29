@@ -333,7 +333,13 @@ export const adminAuditLogs = (params: {
 // ---------------- 流式对话 ----------------
 
 export interface StreamHandlers {
-  onMeta?: (data: { message_id: number; conversation_id: number; model_id: string }) => void
+  onMeta?: (data: {
+    message_id: number
+    conversation_id: number
+    model_id: string
+    context_tokens?: number
+    summarized_messages?: number
+  }) => void
   onDelta?: (text: string) => void
   onReasoning?: (text: string) => void
   onUsage?: (usage: { input_tokens: number; output_tokens: number }) => void

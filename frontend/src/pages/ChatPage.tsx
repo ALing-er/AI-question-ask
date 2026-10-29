@@ -18,6 +18,8 @@ import { speakWithServer, stopSpeaking, unlockAudio } from '../utils/speech'
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : '操作失败')
 
+const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
+
 export default function ChatPage() {
   const user = useAuth((s) => s.user)
   const logout = useAuth((s) => s.logout)
@@ -41,6 +43,10 @@ export default function ChatPage() {
   const [exporting, setExporting] = useState(false)
   const [autoRead, setAutoRead] = useState(false)
   const [webSearch, setWebSearch] = useState(true)
+  const [contextInfo, setContextInfo] = useState<{
+    tokens: number
+    summarized: number
+  } | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
   const activeIdRef = useRef<number | null>(null)
@@ -126,6 +132,7 @@ export default function ChatPage() {
     activeIdRef.current = conv.id
     setModelId(conv.model_id)
     setError(null)
+    setContextInfo(null)
     try {
       setMessages(await api.listMessages(conv.id))
     } catch (e) {
@@ -144,6 +151,7 @@ export default function ChatPage() {
       activeIdRef.current = conv.id
       setMessages([])
       setError(null)
+      setContextInfo(null)
     } catch (e) {
       setError(errText(e))
     }
@@ -160,6 +168,7 @@ export default function ChatPage() {
         const next = rest[0] ?? null
         setActiveId(next?.id ?? null)
         activeIdRef.current = next?.id ?? null
+        setContextInfo(null)
         if (next) {
           setModelId(next.model_id)
           setMessages(await api.listMessages(next.id))
@@ -413,6 +422,11 @@ export default function ChatPage() {
         webSearch,
         signal: controller.signal,
         handlers: {
+          onMeta: (meta) =>
+            setContextInfo({
+              tokens: meta.context_tokens ?? 0,
+              summarized: meta.summarized_messages ?? 0,
+            }),
           onDelta: (t) => {
             answerText += t
             setMessages((prev) =>
@@ -500,6 +514,14 @@ export default function ChatPage() {
                   {(currentModel?.name ?? modelId) || '未选择'}
                 </span>
               </span>
+              {contextInfo && contextInfo.tokens > 0 && (
+                <span className="text-slate-400">
+                  上下文 ≈ {fmtTokens(contextInfo.tokens)} tokens
+                  {contextInfo.summarized > 0
+                    ? `（已压缩 ${contextInfo.summarized} 条）`
+                    : ''}
+                </span>
+              )}
               {streaming && <span className="animate-pulse text-blue-600">正在生成…</span>}
             </div>
           </div>
